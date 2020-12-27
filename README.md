@@ -38,7 +38,10 @@ Philosophy/requirements:
  - Control over reconnect, disconnect, or behavior for handling discord errors
  - cancellation
 
-##
+## Live bot for testing
+There is a bot running the gobwas code. Found in the cmd subdir. If you want to help out the "stress testing", you can add the bot here: https://discord.com/oauth2/authorize?scope=bot&client_id=792491747711123486&permissions=0
+
+It only reads incoming events and waits to crash. Once any alerts such as warning, error, fatal, panic triggers; I get a notification so I can quickly patch the problem!
 
 
 ## Events and intents
