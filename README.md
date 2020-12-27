@@ -1,3 +1,24 @@
+<p>
+  <a href="https://codecov.io/gh/andersfylling/discordgateway">
+    <img src="https://codecov.io/gh/andersfylling/discordgateway/branch/master/graph/badge.svg" />
+  </a>
+  <a href='https://goreportcard.com/report/github.com/andersfylling/discordgateway'>
+    <img src='https://goreportcard.com/badge/github.com/andersfylling/discordgateway' alt='Code coverage' />
+  </a>
+  <a href='https://pkg.go.dev/github.com/andersfylling/discordgateway'>
+    <img src="https://pkg.go.dev/badge/andersfylling/discordgateway" alt="PkgGoDev">
+  </a>
+</p>
+<p>Use the existing disgord channels for discussion</p>
+<p>
+  <a href='https://discord.gg/fQgmBg'>
+    <img src='https://img.shields.io/badge/Discord%20Gophers-%23disgord-blue.svg' alt='Discord Gophers' />
+  </a>
+  <a href='https://discord.gg/HBTHbme'>
+    <img src='https://img.shields.io/badge/Discord%20API-%23disgord-blue.svg' alt='Discord API' />
+  </a>
+</p>
+
 # Ideology
 
 Discord is a mess. Consistency is a luxury. And simplicity is somewhere over there or here.
