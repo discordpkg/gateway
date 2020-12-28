@@ -12,6 +12,7 @@ import (
 
 	"github.com/andersfylling/discordgateway"
 	discordgatewaygobwas "github.com/andersfylling/discordgateway/cmd/gobwas"
+	"github.com/andersfylling/discordgateway/log"
 )
 
 const EnvDiscordToken = "DISCORD_TOKEN"
@@ -43,6 +44,8 @@ func (e errorHook) Fire(entry *logrus.Entry) error {
 
 
 func main() {
+	logger := logrus.New()
+	log.LogInstance = logger
 	
 	token := os.Getenv(EnvDiscordToken)
 	if token == "" {
@@ -51,7 +54,7 @@ func main() {
 	client := disgord.New(disgord.Config{
 		BotToken: token,
 	})
-	logrus.Info("Disgord config valid")
+	logger.Info("Disgord config valid")
 	// u, err := client.BotAuthorizeURL()
 	// if err != nil {
 	// 	logrus.Fatal("unable to generate authorization url: ", err)
@@ -65,16 +68,16 @@ func main() {
 	}
 	logrus.AddHook(hook)
 	
-	listen(token)
+	listen(logger, token)
 }
 
-func listen(token string) {
-	logrus.Warn("STARTED")
+func listen(logger *logrus.Logger, token string) {
+	logger.Warn("STARTED")
 
 	path := "wss://gateway.discord.gg/?v=8&encoding=json"
 
-	logrus.SetLevel(logrus.DebugLevel)
-	logrus.SetFormatter(&logrus.TextFormatter{
+	logger.SetLevel(logrus.DebugLevel)
+	logger.SetFormatter(&logrus.TextFormatter{
 		ForceColors:               true,
 		DisableTimestamp:          false,
 		FullTimestamp:             true,
@@ -95,12 +98,12 @@ func listen(token string) {
 reconnect:
 	conn, reader, _, err := ws.Dial(context.Background(), path)
 	if err != nil {
-		logrus.Fatalf("failed to open websocket connection. %w", err)
+		logger.Fatalf("failed to open websocket connection. %w", err)
 	}
 
 	if reader != nil {
 		if reader.Size() > 0 {
-			logrus.Error("discord sent data too quickly")
+			logger.Error("discord sent data too quickly")
 			return
 		}
 		ws.PutReader(reader)
@@ -111,36 +114,36 @@ reconnect:
 	if opcode, err = discordgatewaygobwas.EventLoop(conn, shard); err != nil {
 		var discordErr *discordgateway.CloseError
 		if errors.As(err, &discordErr) {
-			logrus.Infof("event loop exited with close code: %d", discordErr.Code)
+			logger.Infof("event loop exited with close code: %d", discordErr.Code)
 			switch discordErr.Code {
 			case 1001, 4000:
-				logrus.Debug("creating resume client")
+				logger.Debug("creating resume client")
 				shard = discordgateway.NewResumableShard(shard)
 				goto reconnect
 			case 4007, 4009:
-				logrus.Debug("forcing new identify")
+				logger.Debug("forcing new identify")
 				shard = discordgateway.NewShardFromPrevious(shard)
 				goto reconnect
 			case 4001, 4002, 4003, 4004, 4005, 4008, 4010, 4011, 4012, 4013, 4014:
 			default:
-				logrus.Errorf("unhandled close error, with discord op code(%d): %d", opcode, discordErr.Code)
+				logger.Errorf("unhandled close error, with discord op code(%d): %d", opcode, discordErr.Code)
 			}
 		}
-		logrus.Error("event loop stopped: ", err)
+		logger.Error("event loop stopped: ", err)
 	} else {
 		switch opcode {
 		case 7:
-			logrus.Debug("creating resume client, got op 7")
+			logger.Debug("creating resume client, got op 7")
 			shard = discordgateway.NewResumableShard(shard)
 			goto reconnect
 		case 9:
-			logrus.Debug("creating new client, got op 9")
+			logger.Debug("creating new client, got op 9")
 			shard = discordgateway.NewShardFromPrevious(shard)
 			goto reconnect
 		default:
-			logrus.Error("shutting down without a opcode or error")
+			logger.Error("shutting down without a opcode or error")
 		}
 	}
-	logrus.Warn("STOPPED")
+	logger.Warn("STOPPED")
 }
 

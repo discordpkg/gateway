@@ -12,6 +12,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/andersfylling/discordgateway/intent"
+	"github.com/andersfylling/discordgateway/log"
 )
 
 type CloseError struct {
@@ -147,7 +148,7 @@ func (c *ClientState) Read(client IOReader) (*GatewayPayload, int, error) {
 		c.sequenceNumber.Store(packet.Seq)
 	}
 	if packet.Seq-prevSeq > 1 {
-		// TODO: log skip
+		log.Debug("sequence number jumped by ", packet.Seq-prevSeq)
 	}
 
 	return packet, len(data), nil

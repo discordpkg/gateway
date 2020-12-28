@@ -2,15 +2,16 @@ package discordgatewaygobwas
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"time"
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
-	"github.com/sirupsen/logrus"
 	"go.uber.org/atomic"
 
 	"github.com/andersfylling/discordgateway"
+	"github.com/andersfylling/discordgateway/log"
 )
 
 type heart struct {
@@ -29,21 +30,21 @@ func (h *heart) pulser(ctx context.Context) {
 	ticker := time.NewTicker(h.interval)
 	defer ticker.Stop()
 
-	logrus.Debugf("created heartbeat ticker with interval %s", h.interval)
+	log.Debug(fmt.Sprintf("created heartbeat ticker with interval %s", h.interval))
 loop:
 	select {
 	case <-ctx.Done():
-		logrus.Debug("heartbeat pulser timed out")
+		log.Debug("heartbeat pulser timed out")
 	case <-ticker.C:
 		if h.gotAck.CAS(true, false) {
 			if err := h.shard.Heartbeat(writer); err != nil {
-				logrus.Error("failed to send heartbeat. ", err)
+				log.Error(fmt.Errorf("failed to send heartbeat. %w", err))
 			} else {
-				logrus.Debug("sent heartbeat")
+				log.Debug("sent heartbeat")
 				goto loop // go back to start
 			}
 		} else {
-			logrus.Info("have not received heartbeat, shutting down")
+			log.Info("have not received heartbeat, shutting down")
 		}
 	}
 	if h.shard.Closed() {
@@ -58,11 +59,11 @@ loop:
 	}
 
 	// handle network connection loss
-	logrus.Debug("started fallback for connection issues")
+	log.Debug("started fallback for connection issues")
 	<-time.After(plannedTimeoutWindow)
 	h.forcedReadTimeout.Store(true)
-	logrus.Info("setting read deadline")
+	log.Info("setting read deadline")
 	if err := h.conn.SetReadDeadline(time.Now().Add(1 * time.Second)); err != nil {
-		logrus.Error("failed to set read deadline", err)
+		log.Error(fmt.Errorf("failed to set read deadline. %w", err))
 	}
 }
