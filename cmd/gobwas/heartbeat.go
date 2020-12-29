@@ -17,7 +17,7 @@ import (
 type heart struct {
 	interval          time.Duration
 	conn              net.Conn
-	shard             *discordgateway.ClientState
+	shard             *discordgateway.GatewayState
 	forcedReadTimeout *atomic.Bool
 	gotAck            atomic.Bool
 }

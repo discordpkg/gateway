@@ -1,42 +1,65 @@
 package opcode
 
-// Op is the operation bitmask
-//
-// first 4 bits are reserved (highest valued bits),
-// while the remaining hold the actual op code.
-type Op uint16
-
-func (op Op) Val() uint8 {
-	return uint8(valueMask & op)
-}
-
-func (op Op) Send() bool {
-	return (op & send) > 0
-}
-
-func (op Op) Receive() bool {
-	return (op & receive) > 0
-}
-
-func (op Op) InternalUseOnly() bool {
-	return (op & internalOnly) > 0
-}
-
-// String get string representation of the op code
-// Op(8) => REQUEST_GUILD_MEMBERS
-func (op Op) String() string {
-	panic("not implemented")
-}
-
-const (
-	size            = 16
-	highestBit   Op = 1 << (size - 1)
-	reservedMask Op = 0b1111 << (size - 4)
-	valueMask    Op = (^Op(0)) ^ reservedMask
+import (
+	"strconv"
 )
 
 const (
-	send         Op = reservedMask & (highestBit)
-	receive      Op = reservedMask & (highestBit >> 1)
-	internalOnly Op = reservedMask & (highestBit >> 2)
+	Invalid OpCode = valueMask | internalOnly | invalid
+)
+
+// Op is the operation bitmask
+//
+// first 5 bits are reserved (highest valued bits),
+// while the remaining hold the actual op code.
+type OpCode uint16
+
+func (op OpCode) MarshalJSON() (data []byte, err error) {
+	strVal := op.String()
+	return []byte(strVal), nil
+}
+
+func (op OpCode) Val() uint8 {
+	return uint8(valueMask & op)
+}
+
+func (op OpCode) Send() bool {
+	return op.Guarded() && (op&send) > 0
+}
+
+func (op OpCode) Receive() bool {
+	return op.Guarded() && (op&receive) > 0
+}
+
+func (op OpCode) Voice() bool {
+	return op.Guarded() && (op&voice) > 0
+}
+
+func (op OpCode) InternalUseOnly() bool {
+	return op.Guarded() && (op&internalOnly) > 0
+}
+
+func (op OpCode) Guarded() bool {
+	return (op & reservedMask) > 0
+}
+
+func (op OpCode) String() string {
+	v := int(op.Val())
+	return strconv.Itoa(v)
+}
+
+const (
+	size                    = 16
+	reservedMaskSize OpCode = 5
+	reservedMask     OpCode = 0b11111 << (size - reservedMaskSize)
+	highestBit       OpCode = 1 << (size - 1)
+	valueMask        OpCode = (^OpCode(0)) ^ reservedMask
+)
+
+const (
+	send         OpCode = reservedMask & (highestBit)
+	receive      OpCode = reservedMask & (highestBit >> 1)
+	internalOnly OpCode = reservedMask & (highestBit >> 2)
+	voice        OpCode = reservedMask & (highestBit >> 3)
+	invalid      OpCode = reservedMask & (highestBit >> 4)
 )

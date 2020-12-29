@@ -1,15 +1,15 @@
 package opcode
 
 const (
-	VoiceIdentify           Op = 0 | internalOnly | send
-	VoiceSelectProtocol     Op = 1 | internalOnly | send
-	VoiceReady              Op = 2 | internalOnly | receive
-	VoiceHeartbeat          Op = 3 | internalOnly | send
-	VoiceSessionDescription Op = 4 | internalOnly | receive
-	VoiceSpeaking           Op = 5 | internalOnly | send | receive
-	VoiceHeartbeatAck       Op = 6 | internalOnly | receive
-	VoiceResume             Op = 7 | internalOnly | send
-	VoiceHello              Op = 8 | internalOnly | receive
-	VoiceResumed            Op = 9 | internalOnly | receive
-	VoiceClientDisconnect   Op = 13 | internalOnly | receive
+	VoiceIdentify           OpCode = 0 | internalOnly | voice | send
+	VoiceSelectProtocol     OpCode = 1 | internalOnly | voice | send
+	VoiceReady              OpCode = 2 | internalOnly | voice | receive
+	VoiceHeartbeat          OpCode = 3 | internalOnly | voice | send
+	VoiceSessionDescription OpCode = 4 | internalOnly | voice | receive
+	VoiceSpeaking           OpCode = 5 | internalOnly | voice | send | receive
+	VoiceHeartbeatAck       OpCode = 6 | internalOnly | voice | receive
+	VoiceResume             OpCode = 7 | internalOnly | voice | send
+	VoiceHello              OpCode = 8 | internalOnly | voice | receive
+	VoiceResumed            OpCode = 9 | internalOnly | voice | receive
+	VoiceClientDisconnect   OpCode = 13 | internalOnly | voice | receive
 )

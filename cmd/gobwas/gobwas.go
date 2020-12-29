@@ -15,9 +15,10 @@ import (
 
 	"github.com/andersfylling/discordgateway"
 	"github.com/andersfylling/discordgateway/log"
+	"github.com/andersfylling/discordgateway/opcode"
 )
 
-func writeClose(conn net.Conn, shard *discordgateway.ClientState, reason string) error {
+func writeClose(conn net.Conn, shard *discordgateway.GatewayState, reason string) error {
 	log.Info("shard sent close frame: ", reason)
 	closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)
 	if err := shard.WriteClose(closeWriter); err != nil {
@@ -67,11 +68,7 @@ func writeClose(conn net.Conn, shard *discordgateway.ClientState, reason string)
 // 	}
 // }
 
-const (
-	OpCodeNone int = -1
-)
-
-func EventLoop(conn net.Conn, shard *discordgateway.ClientState) (opcode int, err error) {
+func EventLoop(conn net.Conn, shard *discordgateway.GatewayState) (opcode.OpCode, error) {
 	writer := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpText)
 
 	// timeout, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -111,10 +108,10 @@ func EventLoop(conn net.Conn, shard *discordgateway.ClientState) (opcode int, er
 			if strings.Contains(err.Error(), ioTimeoutMessage) && forcedReadTimeout.Load() {
 				log.Error("closed connection after timing out")
 				_ = conn.Close()
-				return OpCodeNone, nil
+				return opcode.Invalid, nil
 			} else {
 				_ = conn.Close()
-				return OpCodeNone, fmt.Errorf("failed to load next frame. %w", err)
+				return opcode.Invalid, fmt.Errorf("failed to load next frame. %w", err)
 			}
 		}
 		if hdr.OpCode.IsControl() {
@@ -125,16 +122,16 @@ func EventLoop(conn net.Conn, shard *discordgateway.ClientState) (opcode int, er
 						_ = conn.Close()
 					}
 					log.Info(fmt.Errorf("closing down after getting %w", normalClose))
-					return OpCodeNone, &discordgateway.CloseError{Code: uint(normalClose.Code), Reason: normalClose.Reason}
+					return opcode.Invalid, &discordgateway.CloseError{Code: uint(normalClose.Code), Reason: normalClose.Reason}
 				} else {
-					return OpCodeNone, fmt.Errorf("failed to handle control frame. %w", err)
+					return opcode.Invalid, fmt.Errorf("failed to handle control frame. %w", err)
 				}
 			}
 			continue
 		}
 		if hdr.OpCode&ws.OpText == 0 {
 			if err := rd.Discard(); err != nil {
-				return OpCodeNone, fmt.Errorf("failed to discard unwanted frame. %w", err)
+				return opcode.Invalid, fmt.Errorf("failed to discard unwanted frame. %w", err)
 			}
 			log.Debug(fmt.Sprintf("discarded websocket frame due to wrong op: %s", string(hdr.OpCode)))
 			continue
@@ -146,21 +143,19 @@ func EventLoop(conn net.Conn, shard *discordgateway.ClientState) (opcode int, er
 			break
 		}
 
-		if payload.Op > 0 {
+		if payload.Op != opcode.EventDispatch {
 			log.Debug(fmt.Sprintf("read %d bytes of data, op:%d, event:%s\n", length, payload.Op, payload.EventName))
 		}
 
 		switch payload.Op {
 		case 1:
 			if err := shard.Heartbeat(writer); err != nil {
-				return 1, fmt.Errorf("discord requested heartbeat, but was unable to send one. %w", err)
+				return payload.Op, fmt.Errorf("discord requested heartbeat, but was unable to send one. %w", err)
 			}
-		case 7:
-			log.Debug("discord requested a reconnect")
-			return 7, nil // TODO: how to populate up that a reconnect is requested?
+		case opcode.EventReconnect:
+			return payload.Op, nil
 		case 9:
-			log.Debug("discord invalidated session")
-			return 9, nil
+			return payload.Op, nil
 		case 10:
 			if shard.HaveIdentified() {
 				continue
@@ -176,7 +171,7 @@ func EventLoop(conn net.Conn, shard *discordgateway.ClientState) (opcode int, er
 			}
 			var hello *discordgateway.GatewayHello
 			if err := json.Unmarshal(payload.Data, &hello); err != nil {
-				return 10, fmt.Errorf("failed to extract heartbeat from hello message. %w", err)
+				return payload.Op, fmt.Errorf("failed to extract heartbeat from hello message. %w", err)
 			}
 
 			pulser.gotAck.Store(true)
@@ -192,5 +187,5 @@ func EventLoop(conn net.Conn, shard *discordgateway.ClientState) (opcode int, er
 		}
 	}
 
-	return OpCodeNone, nil
+	return opcode.Invalid, nil
 }
