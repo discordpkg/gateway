@@ -1,7 +1,7 @@
 package discordgateway
 
 import (
-	"encoding/json"
+	"github.com/andersfylling/discordgateway/json"
 
 	"github.com/andersfylling/discordgateway/event"
 )

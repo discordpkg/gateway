@@ -1,9 +1,10 @@
 package discordgateway
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
+
+	"github.com/andersfylling/discordgateway/json"
 
 	"go.uber.org/atomic"
 

@@ -5,7 +5,7 @@ import (
 )
 
 // ensure that the interfaces are the same as in the json pkg
-type custom struct {}
+type custom struct{}
 
 func (c custom) UnmarshalJSON(_ []byte) error {
 	return nil

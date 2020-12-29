@@ -2,11 +2,12 @@ package discordgateway
 
 import (
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+
+	"github.com/andersfylling/discordgateway/json"
 
 	"go.uber.org/atomic"
 

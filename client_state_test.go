@@ -2,12 +2,13 @@ package discordgateway
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"testing"
 	"time"
+
+	"github.com/andersfylling/discordgateway/json"
 
 	"github.com/andersfylling/discordgateway/opcode"
 )

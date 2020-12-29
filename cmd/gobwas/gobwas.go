@@ -2,12 +2,13 @@ package discordgatewaygobwas
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"strings"
 	"time"
+
+	"github.com/andersfylling/discordgateway/json"
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"

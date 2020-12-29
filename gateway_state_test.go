@@ -1,9 +1,10 @@
 package discordgateway
 
 import (
-	"encoding/json"
 	"strconv"
 	"testing"
+
+	"github.com/andersfylling/discordgateway/json"
 
 	"github.com/andersfylling/discordgateway/opcode"
 )
