@@ -4,14 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 
 	"github.com/andersfylling/disgord"
-	"github.com/gobwas/ws"
 	"github.com/sirupsen/logrus"
 
 	"github.com/andersfylling/discordgateway"
-	discordgatewaygobwas "github.com/andersfylling/discordgateway/cmd/gobwas"
+	"github.com/andersfylling/discordgateway/event"
 	"github.com/andersfylling/discordgateway/log"
 )
 
@@ -66,7 +66,7 @@ func main() {
 	hook := &errorHook{
 		discordClient: client,
 	}
-	logrus.AddHook(hook)
+	logger.AddHook(hook)
 	
 	listen(logger, token)
 }
@@ -74,7 +74,6 @@ func main() {
 func listen(logger *logrus.Logger, token string) {
 	logger.Warn("STARTED")
 
-	path := "wss://gateway.discord.gg/?v=8&encoding=json"
 
 	logger.SetLevel(logrus.DebugLevel)
 	logger.SetFormatter(&logrus.TextFormatter{
@@ -84,7 +83,7 @@ func listen(logger *logrus.Logger, token string) {
 		TimestampFormat:           "",
 	})
 
-	shard := discordgateway.NewShard(&discordgateway.ClientStateConfig{
+	shard := discordgateway.NewShard(event.All(), nil, &discordgateway.ClientStateConfig{
 		Token: token,
 		Intents: 0b111111111111111, // everything
 		TotalNumberOfShards: 1,
@@ -95,34 +94,35 @@ func listen(logger *logrus.Logger, token string) {
 		},
 	})
 
+	path := "wss://gateway.discord.gg/?v=8&encoding=json"
+	u, err := url.Parse(path)
+	if err != nil {
+		logger.Fatalf("invalid url string: %s", path)
+	}
+
 reconnect:
-	conn, reader, _, err := ws.Dial(context.Background(), path)
+	conn, err := shard.Dial(context.Background(), u)
 	if err != nil {
 		logger.Fatalf("failed to open websocket connection. %w", err)
 	}
-
-	if reader != nil {
-		if reader.Size() > 0 {
-			logger.Error("discord sent data too quickly")
-			return
-		}
-		ws.PutReader(reader)
-	}
 	
 
-	var opcode int
-	if opcode, err = discordgatewaygobwas.EventLoop(conn, shard); err != nil {
+	if opcode, err := shard.EventLoop(conn); err != nil {
 		var discordErr *discordgateway.CloseError
 		if errors.As(err, &discordErr) {
 			logger.Infof("event loop exited with close code: %d", discordErr.Code)
 			switch discordErr.Code {
 			case 1001, 4000:
 				logger.Debug("creating resume client")
-				shard = discordgateway.NewResumableShard(shard)
+				if !shard.HaveSessionID() {
+					logger.Fatal("expected session id to exist")
+				}
 				goto reconnect
 			case 4007, 4009:
 				logger.Debug("forcing new identify")
-				shard = discordgateway.NewShardFromPrevious(shard)
+				if shard.HaveSessionID() {
+					logger.Fatal("expected session id to not exist")
+				}
 				goto reconnect
 			case 4001, 4002, 4003, 4004, 4005, 4008, 4010, 4011, 4012, 4013, 4014:
 			default:
@@ -134,11 +134,15 @@ reconnect:
 		switch opcode {
 		case 7:
 			logger.Debug("creating resume client, got op 7")
-			shard = discordgateway.NewResumableShard(shard)
+			if !shard.HaveSessionID() {
+				logger.Fatal("expected session id to exist")
+			}
 			goto reconnect
 		case 9:
 			logger.Debug("creating new client, got op 9")
-			shard = discordgateway.NewShardFromPrevious(shard)
+			if shard.HaveSessionID() {
+				logger.Fatal("expected session id to not exist")
+			}
 			goto reconnect
 		default:
 			logger.Error("shutting down without a opcode or error")

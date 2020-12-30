@@ -38,6 +38,51 @@ Philosophy/requirements:
  - Control over reconnect, disconnect, or behavior for handling discord errors
  - cancellation
 
+## Simple shard example 
+> This code uses github.com/gobwas/ws, but you are free to use other
+> websocket implementations as well. You just have to write your own Shard implmentation
+> and use GatewayState. See shard.go for inspiration.
+
+```go
+shard := discordgateway.Shard(&ShardConfig{
+	Whitelist: event.MessageCreate | event.MemberCreate,
+})
+
+reconnect:
+urlstr := url.Parse("wss://gateway.discord.gg/?v=8&encoding=json")
+conn, err := shard.Dial(context.Background(), urlstr)
+if err != nil {
+	panic(err)
+}
+
+
+var opcode int
+if opcode, err = s.eventLoop(conn, shard); err != nil {
+    var discordErr *discordgateway.CloseError
+    if errors.As(err, &discordErr) {
+        logger.Infof("event loop exited with close code: %d", discordErr.Code)
+        switch discordErr.Code {
+        case 1001, 4000:
+            logger.Debug("creating resume client")
+            goto reconnect
+        case 4007, 4009:
+            logger.Debug("forcing new identify")
+            goto reconnect
+        case 4001, 4002, 4003, 4004, 4005, 4008, 4010, 4011, 4012, 4013, 4014:
+        default:
+            logger.Errorf("unhandled close error, with discord op code(%d): %d", opcode, discordErr.Code)
+        }
+    }
+} else {
+    switch opcode {
+    case 7, 9:
+        goto reconnect
+    default:
+    }
+}
+
+```
+
 ## Live bot for testing
 There is a bot running the gobwas code. Found in the cmd subdir. If you want to help out the "stress testing", you can add the bot here: https://discord.com/oauth2/authorize?scope=bot&client_id=792491747711123486&permissions=0
 

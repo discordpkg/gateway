@@ -47,31 +47,10 @@ type GatewayIdentify struct {
 	Intents        intent.Flag `json:"intents"`
 }
 
-// NewResumableShard when a client/shard disconnects for whatever reason,
-// you must create a new instance. To utilise the resume logic from discord
-// you must use the new client instance below. Note that it is your responsibility
-// to make sure you are allowed to resume. eg. resuming after a "invalid session"
-// will most likely fail, and you need to create a new shard again.
-//
-// You must use the newly returned instance. The argument/function input should
-// be left for garbage collection.
-func NewResumableShard(deadShard *GatewayState) *GatewayState {
+func NewGatewayClient(conf *ClientStateConfig) *GatewayState {
 	return &GatewayState{
-		conf:      deadShard.conf,
-		state:     newStateWithSeqNumber(deadShard.SequenceNumber()),
-		sessionID: deadShard.sessionID,
-	}
-}
-
-func NewShardFromPrevious(deadShard *GatewayState) *GatewayState {
-	return &GatewayState{
-		conf: deadShard.conf,
-	}
-}
-
-func NewShard(conf *ClientStateConfig) *GatewayState {
-	return &GatewayState{
-		conf: *conf,
+		conf:  *conf,
+		state: newState(),
 	}
 }
 

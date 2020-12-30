@@ -120,3 +120,6 @@ const InviteCreate = "INVITE_CREATE"
 
 // MessageReactionDeleteEmoji Sent when a bot removes all instances of a given emoji from the reactions of a message.
 const MessageReactionDeleteEmoji = "MESSAGE_REACTION_REMOVE_EMOJI"
+
+// InteractionCreate Sent when a user in a guild uses a Slash Command. Inner payload is an Interaction.
+const InteractionCreate = "INTERACTION_CREATE"

@@ -103,6 +103,10 @@ const (
 	//
 	GuildUpdate
 
+	// InteractionCreate Sent when a user in a guild uses a Slash Command. Inner payload is an Interaction.
+	//
+	InteractionCreate
+
 	// InviteCreate Sent when a guild's invite is created.
 	//
 	InviteCreate
@@ -201,6 +205,7 @@ const (
 	guildRoleDeleteString            = "GUILD_ROLE_DELETE"
 	guildRoleUpdateString            = "GUILD_ROLE_UPDATE"
 	guildUpdateString                = "GUILD_UPDATE"
+	interactionCreateString          = "INTERACTION_CREATE"
 	inviteCreateString               = "INVITE_CREATE"
 	inviteDeleteString               = "INVITE_DELETE"
 	messageCreateString              = "MESSAGE_CREATE"
@@ -222,7 +227,7 @@ const (
 )
 
 func All() Flag {
-	return ChannelCreate | ChannelDelete | ChannelPinsUpdate | ChannelUpdate | GuildBanCreate | GuildBanDelete | GuildCreate | GuildDelete | GuildEmojisUpdate | GuildIntegrationsUpdate | GuildMemberCreate | GuildMemberDelete | GuildMemberUpdate | GuildMembersChunk | GuildRoleCreate | GuildRoleDelete | GuildRoleUpdate | GuildUpdate | InviteCreate | InviteDelete | MessageCreate | MessageDelete | MessageDeleteBulk | MessageReactionCreate | MessageReactionDelete | MessageReactionDeleteAll | MessageReactionDeleteEmoji | MessageUpdate | PresenceUpdate | Ready | Resumed | TypingStart | UserUpdate | VoiceServerUpdate | VoiceStateUpdate | WebhooksUpdate | 0
+	return ChannelCreate | ChannelDelete | ChannelPinsUpdate | ChannelUpdate | GuildBanCreate | GuildBanDelete | GuildCreate | GuildDelete | GuildEmojisUpdate | GuildIntegrationsUpdate | GuildMemberCreate | GuildMemberDelete | GuildMemberUpdate | GuildMembersChunk | GuildRoleCreate | GuildRoleDelete | GuildRoleUpdate | GuildUpdate | InteractionCreate | InviteCreate | InviteDelete | MessageCreate | MessageDelete | MessageDeleteBulk | MessageReactionCreate | MessageReactionDelete | MessageReactionDeleteAll | MessageReactionDeleteEmoji | MessageUpdate | PresenceUpdate | Ready | Resumed | TypingStart | UserUpdate | VoiceServerUpdate | VoiceStateUpdate | WebhooksUpdate | 0
 }
 
 func String(flags Flag) (string, error) {
@@ -272,6 +277,8 @@ func String(flags Flag) (string, error) {
 		name = guildRoleUpdateString
 	case GuildUpdate:
 		name = guildUpdateString
+	case InteractionCreate:
+		name = interactionCreateString
 	case InviteCreate:
 		name = inviteCreateString
 	case InviteDelete:
@@ -352,6 +359,8 @@ func StringToEvent(e string) (flag Flag, err error) {
 		flag = GuildRoleUpdate
 	case guildUpdateString:
 		flag = GuildUpdate
+	case interactionCreateString:
+		flag = InteractionCreate
 	case inviteCreateString:
 		flag = InviteCreate
 	case inviteDeleteString:
