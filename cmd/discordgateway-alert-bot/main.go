@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/andersfylling/disgord"
 	"github.com/sirupsen/logrus"
@@ -13,6 +14,7 @@ import (
 	"github.com/andersfylling/discordgateway"
 	"github.com/andersfylling/discordgateway/event"
 	"github.com/andersfylling/discordgateway/log"
+	"github.com/andersfylling/discordgateway/opcode"
 )
 
 const EnvDiscordToken = "DISCORD_TOKEN"
@@ -107,7 +109,7 @@ reconnect:
 	}
 	
 
-	if opcode, err := shard.EventLoop(conn); err != nil {
+	if op, err := shard.EventLoop(conn); err != nil {
 		var discordErr *discordgateway.CloseError
 		if errors.As(err, &discordErr) {
 			logger.Infof("event loop exited with close code: %d", discordErr.Code)
@@ -126,20 +128,19 @@ reconnect:
 				goto reconnect
 			case 4001, 4002, 4003, 4004, 4005, 4008, 4010, 4011, 4012, 4013, 4014:
 			default:
-				logger.Errorf("unhandled close error, with discord op code(%d): %d", opcode, discordErr.Code)
+				logger.Errorf("unhandled close error, with discord op code(%d): %d", op, discordErr.Code)
 			}
 		}
 		logger.Error("event loop stopped: ", err)
 	} else {
-		switch opcode {
-		case 7:
-			logger.Debug("creating resume client, got op 7")
+		logger.Infof("event loop exited with op code: %s", op.String())
+		switch op {
+		case opcode.EventReconnect:
 			if !shard.HaveSessionID() {
 				logger.Fatal("expected session id to exist")
 			}
 			goto reconnect
-		case 9:
-			logger.Debug("creating new client, got op 9")
+		case opcode.EventInvalidSession:
 			if shard.HaveSessionID() {
 				logger.Fatal("expected session id to not exist")
 			}
@@ -149,5 +150,6 @@ reconnect:
 		}
 	}
 	logger.Warn("STOPPED")
+	<-time.After(5*time.Second)
 }
 

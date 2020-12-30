@@ -85,9 +85,7 @@ func (s *Shard) EventLoop(conn net.Conn) (opcode.OpCode, error) {
 				sessionID: s.GatewayState.sessionID,
 			}
 		} else {
-			s.GatewayState = GatewayState{
-				conf: s.GatewayState.conf,
-			}
+			s.GatewayState = *NewGatewayClient(&s.GatewayState.conf)
 		}
 	}()
 
@@ -127,9 +125,8 @@ func (s *Shard) EventLoop(conn net.Conn) (opcode.OpCode, error) {
 			// net.go@timeoutErr # ~583 at 2020-12-25
 			const ioTimeoutMessage = "i/o timeout"
 			if strings.Contains(err.Error(), ioTimeoutMessage) && forcedReadTimeout.Load() {
-				log.Error("closed connection after timing out")
 				_ = conn.Close()
-				return opcode.Invalid, nil
+				return opcode.Invalid, fmt.Errorf("closed connection due to timeout. %w", err)
 			} else {
 				_ = conn.Close()
 				return opcode.Invalid, fmt.Errorf("failed to load next frame. %w", err)
@@ -163,12 +160,10 @@ func (s *Shard) EventLoop(conn net.Conn) (opcode.OpCode, error) {
 
 		payload, length, err := s.Read(&rd)
 		if err != nil {
-			log.Error("unable to call shard read successfully: ", err)
-			break
+			return opcode.Invalid, fmt.Errorf("unable to call shard read successfully: %w", err)
 		}
-
-		if payload.Op != opcode.EventDispatch {
-			log.Debug(fmt.Sprintf("read %d bytes of data, op:%d, event:%s\n", length, payload.Op, payload.EventName))
+		if length == 0 {
+			return opcode.Invalid, errors.New("no data was actually read. Byte slice payload had a length of 0")
 		}
 
 		switch payload.Op {
