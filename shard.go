@@ -78,7 +78,10 @@ func (s *Shard) writeClose(conn net.Conn, reason string) error {
 func (s *Shard) EventLoop(conn net.Conn) (opcode.OpCode, error) {
 	allowResume := atomic.Bool{}
 	defer func() {
-		if allowResume.Load() && s.GatewayState.sessionID != "" {
+		resume := allowResume.Load()
+		hasSessionID := s.HaveSessionID()
+		log.Debug("cleanup: ", resume, hasSessionID)
+		if resume && hasSessionID {
 			s.GatewayState = GatewayState{
 				conf:      s.GatewayState.conf,
 				state:     newStateWithSeqNumber(s.SequenceNumber()),
@@ -171,6 +174,13 @@ func (s *Shard) EventLoop(conn net.Conn) (opcode.OpCode, error) {
 			if s.handler != nil {
 				s.handler(payload.EventFlag, payload.Data)
 			}
+			if payload.EventFlag == event.Ready {
+				var ready *GatewayReady
+				if err := json.Unmarshal(payload.Data, &ready); err != nil {
+					return payload.Op, fmt.Errorf("failed to extract session id from ready event. %w", err)
+				}
+				s.GatewayState.sessionID = ready.SessionID
+			}
 		case opcode.EventHeartbeat:
 			if err := s.Heartbeat(writer); err != nil {
 				return payload.Op, fmt.Errorf("discord requested heartbeat, but was unable to send one. %w", err)
@@ -186,11 +196,11 @@ func (s *Shard) EventLoop(conn net.Conn) (opcode.OpCode, error) {
 			}
 			if s.HaveSessionID() {
 				if err := s.Resume(writer); err != nil {
-					return 10, fmt.Errorf("sending resume failed. closing. %w", err)
+					return payload.Op, fmt.Errorf("sending resume failed. closing. %w", err)
 				}
 			} else {
 				if err := s.Identify(writer); err != nil {
-					return 10, fmt.Errorf("identify failed. closing. %w", err)
+					return payload.Op, fmt.Errorf("identify failed. closing. %w", err)
 				}
 			}
 			var hello *GatewayHello

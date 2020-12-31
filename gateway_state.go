@@ -25,6 +25,10 @@ type GatewayHello struct {
 	HeartbeatIntervalMilli int64 `json:"heartbeat_interval"`
 }
 
+type GatewayReady struct {
+	SessionID string `json:"session_id"`
+}
+
 type GatewayResume struct {
 	Token          string `json:"token"`
 	SessionID      string `json:"session_id"`
