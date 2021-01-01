@@ -1,6 +1,7 @@
 package discordgateway
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -77,6 +78,29 @@ type GatewayState struct {
 
 	sessionID            string
 	sentResumeOrIdentify atomic.Bool
+}
+
+func (gs *GatewayState) isSendOpCode(op opcode.OpCode) bool {
+	validOps := []opcode.OpCode{
+		opcode.EventHeartbeat, opcode.EventIdentify,
+		opcode.EventPresenceUpdate, opcode.EventVoiceStateUpdate,
+		opcode.EventResume, opcode.EventRequestGuildMembers,
+	}
+
+	for _, validOp := range validOps {
+		if op == validOp {
+			return true
+		}
+	}
+	return false
+}
+
+func (gs *GatewayState) Write(client IOFlushWriter, op opcode.OpCode, payload json.RawMessage) (err error) {
+	if !gs.isSendOpCode(op) {
+		return errors.New(fmt.Sprintf("operation code %d is not for outgoing payloads", op))
+	}
+
+	return gs.state.Write(client, op, payload)
 }
 
 // Heartbeat Close method may be used if Write fails

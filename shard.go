@@ -21,14 +21,14 @@ import (
 
 func NewShard(whitelist event.Flag, handler func(event.Flag, []byte), conf *ClientStateConfig) *Shard {
 	return &Shard{
-		*NewGatewayClient(conf),
+		NewGatewayClient(conf),
 		whitelist,
 		handler,
 	}
 }
 
 type Shard struct {
-	GatewayState
+	*GatewayState
 	whitelist event.Flag
 	handler   func(event.Flag, []byte)
 }
@@ -75,24 +75,23 @@ func (s *Shard) writeClose(conn net.Conn, reason string) error {
 	return nil
 }
 
-func (s *Shard) EventLoop(conn net.Conn) (opcode.OpCode, error) {
+func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, error) {
 	allowResume := atomic.Bool{}
 	defer func() {
 		resume := allowResume.Load()
 		hasSessionID := s.HaveSessionID()
 		log.Debug("cleanup: ", resume, hasSessionID)
 		if resume && hasSessionID {
-			s.GatewayState = GatewayState{
+			s.GatewayState = &GatewayState{
 				conf:      s.GatewayState.conf,
 				state:     newStateWithSeqNumber(s.SequenceNumber()),
 				sessionID: s.GatewayState.sessionID,
 			}
 		} else {
-			s.GatewayState = *NewGatewayClient(&s.GatewayState.conf)
+			s.GatewayState = NewGatewayClient(&s.GatewayState.conf)
 		}
 	}()
 
-	// timeout, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	life, kill := context.WithCancel(context.Background())
 	defer func() {
 		kill()
@@ -214,8 +213,8 @@ func (s *Shard) EventLoop(conn net.Conn) (opcode.OpCode, error) {
 			pulser.shard = s
 			pulser.forcedReadTimeout = &forcedReadTimeout
 
-			go pulser.pulser(life, writer)
-		case opcode.EventHeartbeatAck:
+			go pulser.pulser(ctx, life, writer)
+		case opcode.EventHeartbeatACK:
 			pulser.gotAck.Store(true)
 		default:
 		}
@@ -232,7 +231,7 @@ type heart struct {
 	gotAck            atomic.Bool
 }
 
-func (h *heart) pulser(ctx context.Context, writer *wsutil.Writer) {
+func (h *heart) pulser(ctx context.Context, eventLoopCtx context.Context, writer *wsutil.Writer) {
 	// shard <-> pulser
 	ticker := time.NewTicker(h.interval)
 	defer ticker.Stop()
@@ -240,8 +239,14 @@ func (h *heart) pulser(ctx context.Context, writer *wsutil.Writer) {
 	log.Debug(fmt.Sprintf("created heartbeat ticker with interval %s", h.interval))
 loop:
 	select {
+	case <-eventLoopCtx.Done():
+		return
 	case <-ctx.Done():
-		log.Debug("heartbeat pulser timed out")
+		select {
+		case <-eventLoopCtx.Done():
+			return
+		case <-time.After(1 * time.Second):
+		}
 	case <-ticker.C:
 		if h.gotAck.CAS(true, false) {
 			if err := h.shard.Heartbeat(writer); err != nil {
@@ -267,7 +272,12 @@ loop:
 
 	// handle network connection loss
 	log.Debug("started fallback for connection issues")
-	<-time.After(plannedTimeoutWindow)
+	select {
+	case <-time.After(plannedTimeoutWindow):
+	case <-eventLoopCtx.Done():
+		return
+	}
+
 	h.forcedReadTimeout.Store(true)
 	log.Info("setting read deadline")
 	if err := h.conn.SetReadDeadline(time.Now().Add(1 * time.Second)); err != nil {

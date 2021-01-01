@@ -109,7 +109,7 @@ reconnect:
 	}
 	
 
-	if op, err := shard.EventLoop(conn); err != nil {
+	if op, err := shard.EventLoop(context.Background(), conn); err != nil {
 		var discordErr *discordgateway.CloseError
 		if errors.As(err, &discordErr) {
 			logger.Infof("event loop exited with close code: %d", discordErr.Code)

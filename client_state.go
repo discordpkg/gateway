@@ -89,13 +89,6 @@ func (c *clientState) Read(client IOReader) (*GatewayPayload, int, error) {
 		return nil, 0, fmt.Errorf("failed to unmarshal packet. %w", err)
 	}
 
-	// add opcode guards
-	// however, discord might send new opcode values
-	guardedOpCode := opcode.EventGuards(packet.Op.Val())
-	if guardedOpCode != opcode.Invalid {
-		packet.Op = guardedOpCode
-	}
-
 	// set event flags
 	if packet.Op == opcode.EventDispatch {
 		if packet.EventFlag, err = event.StringToEvent(packet.EventName); err != nil {
@@ -116,9 +109,6 @@ func (c *clientState) Read(client IOReader) (*GatewayPayload, int, error) {
 }
 
 func (c *clientState) Write(client IOFlushWriter, opCode opcode.OpCode, payload json.RawMessage) (err error) {
-	if opCode.Guarded() && !opCode.Send() {
-		return fmt.Errorf("the guarded operation code is not send-able. Code %d", int(opCode.Val()))
-	}
 	if c.stateClosed.Load() {
 		return io.ErrClosedPipe
 	}

@@ -65,7 +65,6 @@ func (m *IOMockWithClosedConnection) Write(p []byte) (n int, err error) {
 }
 
 func TestClientState(t *testing.T) {
-	t.Parallel()
 	t.Run("write", func(t *testing.T) {
 		t.Run("success", func(t *testing.T) {
 			client := newState()
@@ -97,40 +96,9 @@ func TestClientState(t *testing.T) {
 				t.Errorf("incorrect payload data. Got %s, wants %s", packet.Data, data)
 			}
 
-			if packet.Op.Val() != op.Val() {
+			if packet.Op != op {
 				t.Errorf("incorrect operation code. Got %d, wants %d", packet.Op, op)
 			}
-
-			if packet.Op == op {
-				t.Errorf("incorrect guards code. Got %d, wants %d", packet.Op, op.Val())
-			}
-		})
-		t.Run("opcode", func(t *testing.T) {
-			client := newState()
-			mock := &IOMock{
-				writeChan: make(chan []byte, 2),
-			}
-
-			data := []byte(`"some test data"`)
-			op := opcode.EventDispatch
-			if op.Send() {
-				t.Fatal("opcode must not be send-able")
-			}
-
-			t.Run("guarded", func(t *testing.T) {
-				if err := client.Write(mock, op, data); err == nil {
-					t.Error("should fail to write a op code which is receive only")
-				}
-			})
-			t.Run("unguarded", func(t *testing.T) {
-				op = opcode.OpCode(op.Val())
-				if op.Guarded() {
-					t.Fatal("guards should have been deleted")
-				}
-				if err := client.Write(mock, op, data); err != nil {
-					t.Error("operation code should not have been guarded. ", err)
-				}
-			})
 		})
 		t.Run("closed-connection", func(t *testing.T) {
 			client := newState()
@@ -154,7 +122,7 @@ func TestClientState(t *testing.T) {
 			}
 
 			heartbeatInterval := int64(4500)
-			op := uint8(10)
+			op := opcode.EventHello
 			// write the data to pipe
 			str := fmt.Sprintf(`{"op":%d,"d":{"heartbeat_interval":%d}}`, op, heartbeatInterval)
 			mock.readChan <- []byte(str)
@@ -171,7 +139,7 @@ func TestClientState(t *testing.T) {
 				t.Fatal("client was closed")
 			}
 
-			if payload.Op.Val() != op {
+			if payload.Op != op {
 				t.Errorf("incorrect op code. Got %d, wants %d", payload.Op, op)
 			}
 			if len(payload.Data) == 0 {
@@ -228,9 +196,8 @@ func extractIOMockWrittenMessage(mock *IOMock, expectedOPCode opcode.OpCode) (*G
 		return nil, fmt.Errorf("unable to unmarshal data into GatewayPayload. %w", err)
 	}
 
-	wants := opcode.OpCode(expectedOPCode.Val())
-	if packet.Op != wants {
-		return nil, fmt.Errorf("expected operation code %d. got %d", wants, packet.Op)
+	if packet.Op != expectedOPCode {
+		return nil, fmt.Errorf("expected operation code %d. got %d", expectedOPCode, packet.Op)
 	}
 	return packet, nil
 }

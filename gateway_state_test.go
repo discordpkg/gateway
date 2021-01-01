@@ -20,7 +20,6 @@ func NewGatewayStateWithSeqNumber(seq int64) GatewayState {
 }
 
 func TestGatewayState_Heartbeat(t *testing.T) {
-	t.Parallel()
 	t.Run("success", func(t *testing.T) {
 		finalSeqNumber := int64(156356)
 		client := NewGatewayStateWithSeqNumber(finalSeqNumber)
@@ -49,7 +48,6 @@ func TestGatewayState_Heartbeat(t *testing.T) {
 	})
 }
 func TestGatewayState_Identify(t *testing.T) {
-	t.Parallel()
 	t.Run("success", func(t *testing.T) {
 		client := NewGatewayState()
 		client.conf = ClientStateConfig{
@@ -99,7 +97,6 @@ func TestGatewayState_Identify(t *testing.T) {
 	})
 }
 func TestGatewayState_Resume(t *testing.T) {
-	t.Parallel()
 	t.Run("success", func(t *testing.T) {
 		client := NewGatewayState()
 		client.conf = ClientStateConfig{
