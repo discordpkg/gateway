@@ -50,7 +50,7 @@ func TestGatewayState_Heartbeat(t *testing.T) {
 func TestGatewayState_Identify(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		client := NewGatewayState()
-		client.conf = ClientStateConfig{
+		client.conf = GatewayStateConfig{
 			Token:               "kaicyeurtbecgresn",
 			Intents:             1,
 			ShardID:             0,
@@ -99,7 +99,7 @@ func TestGatewayState_Identify(t *testing.T) {
 func TestGatewayState_Resume(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		client := NewGatewayState()
-		client.conf = ClientStateConfig{
+		client.conf = GatewayStateConfig{
 			Token:               "kaicyeurtbecgresn",
 			Intents:             1,
 			ShardID:             0,

@@ -53,14 +53,14 @@ type GatewayIdentify struct {
 	Intents        intent.Flag `json:"intents"`
 }
 
-func NewGatewayClient(conf *ClientStateConfig) *GatewayState {
+func NewGatewayClient(conf *GatewayStateConfig) *GatewayState {
 	return &GatewayState{
 		conf:  *conf,
 		state: newState(),
 	}
 }
 
-type ClientStateConfig struct {
+type GatewayStateConfig struct {
 	Token               string
 	Intents             intent.Flag
 	ShardID             uint
@@ -71,7 +71,7 @@ type ClientStateConfig struct {
 // GatewayState should be discarded after the connection has closed.
 // reconnect must create a new shard instance.
 type GatewayState struct {
-	conf ClientStateConfig
+	conf GatewayStateConfig
 	state
 	// TODO: replace state interface with stateClient struct
 	//  interface is used to ensure validity, and avoid write dependencies.

@@ -19,7 +19,7 @@ import (
 	"github.com/andersfylling/discordgateway/opcode"
 )
 
-func NewShard(whitelist event.Flag, handler func(event.Flag, []byte), conf *ClientStateConfig) *Shard {
+func NewShard(whitelist event.Flag, handler func(event.Flag, []byte), conf *GatewayStateConfig) *Shard {
 	return &Shard{
 		NewGatewayClient(conf),
 		whitelist,
@@ -66,10 +66,10 @@ func (s *Shard) Dial(ctx context.Context, u *url.URL) (connection net.Conn, err 
 	return conn, nil
 }
 
-func (s *Shard) writeClose(conn net.Conn, reason string) error {
+func writeClose(state *GatewayState, conn net.Conn, reason string) error {
 	log.Info("shard sent close frame: ", reason)
 	closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)
-	if err := s.WriteClose(closeWriter); err != nil {
+	if err := state.WriteClose(closeWriter); err != nil {
 		return fmt.Errorf("failed to write close frame. %w", err)
 	}
 	return nil
@@ -102,7 +102,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 		if s.Closed() {
 			return
 		}
-		if err := s.writeClose(conn, "program shutdown"); err != nil {
+		if err := writeClose(s.GatewayState, conn, "program shutdown"); err != nil {
 			log.Fatal("failed to close connection properly: ", err)
 		}
 		_ = conn.Close()
@@ -203,7 +203,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 			pulser.gotAck.Store(true)
 			pulser.interval = time.Duration(hello.HeartbeatIntervalMilli) * time.Millisecond
 			pulser.conn = conn
-			pulser.shard = s
+			pulser.shard = s.GatewayState
 			pulser.forcedReadTimeout = &forcedReadTimeout
 
 			go pulser.pulser(ctx, life, writer)
@@ -219,7 +219,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 type heart struct {
 	interval          time.Duration
 	conn              net.Conn
-	shard             *Shard
+	shard             *GatewayState
 	forcedReadTimeout *atomic.Bool
 	gotAck            atomic.Bool
 }
@@ -259,7 +259,7 @@ loop:
 	}
 
 	plannedTimeoutWindow := 5 * time.Second
-	if err := h.shard.writeClose(h.conn, "heart beat failure"); err != nil {
+	if err := writeClose(h.shard, h.conn, "heart beat failure"); err != nil {
 		plannedTimeoutWindow = 100 * time.Millisecond
 	}
 

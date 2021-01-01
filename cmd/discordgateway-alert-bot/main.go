@@ -85,7 +85,7 @@ func listen(logger *logrus.Logger, token string) {
 		TimestampFormat:           "",
 	})
 
-	shard := discordgateway.NewShard(event.All(), nil, &discordgateway.ClientStateConfig{
+	shard := discordgateway.NewShard(event.All(), nil, &discordgateway.GatewayStateConfig{
 		Token: token,
 		Intents: 0b111111111111111, // everything
 		TotalNumberOfShards: 1,
@@ -133,7 +133,7 @@ reconnect:
 		}
 		logger.Error("event loop stopped: ", err)
 	} else {
-		logger.Infof("event loop exited with op code: %s", op.String())
+		logger.Infof("event loop exited with op code: %s", op)
 		switch op {
 		case opcode.EventReconnect:
 			if !shard.HaveSessionID() {
