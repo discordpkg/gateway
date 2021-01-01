@@ -105,6 +105,7 @@ func TestGatewayState_Resume(t *testing.T) {
 			ShardID:             0,
 			TotalNumberOfShards: 1,
 		}
+		client.sessionID = "kdfjhsdk"
 		mock := &IOMock{
 			writeChan: make(chan []byte, 2),
 		}

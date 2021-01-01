@@ -155,6 +155,9 @@ func (gs *GatewayState) Identify(client IOFlushWriter) error {
 
 // Resume Close method may be used if Write fails
 func (gs *GatewayState) Resume(client IOFlushWriter) error {
+	if !gs.HaveSessionID() {
+		return errors.New("missing session id, can not resume connection")
+	}
 	resumePacket := &GatewayResume{
 		Token:          gs.conf.Token,
 		SessionID:      gs.sessionID,
