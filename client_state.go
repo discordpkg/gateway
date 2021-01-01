@@ -102,6 +102,7 @@ func (c *clientState) Read(client IOReader) (*GatewayPayload, int, error) {
 		c.sequenceNumber.Store(packet.Seq)
 	}
 	if packet.Seq-prevSeq > 1 {
+		// TODO: disconnect and force resume?
 		log.Debug("sequence number jumped by ", packet.Seq-prevSeq)
 	}
 

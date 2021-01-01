@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/andersfylling/discordgateway/event"
 	"github.com/andersfylling/discordgateway/json"
 
 	"github.com/andersfylling/discordgateway/opcode"
@@ -53,7 +54,15 @@ func (m *IOMock) Read(p []byte) (n int, err error) {
 		}
 	}
 
-	return m.readBuf.Read(p)
+	n, err = m.readBuf.Read(p)
+	if err != nil {
+		return 0, err
+	}
+
+	if n == 0 || len(p) > n {
+		m.readBuf = nil
+	}
+	return n, nil
 }
 
 type IOMockWithClosedConnection struct {
@@ -145,6 +154,66 @@ func TestClientState(t *testing.T) {
 			if len(payload.Data) == 0 {
 				t.Fatal("payload contains no raw data")
 			}
+
+			if client.SequenceNumber() != 0 {
+				t.Errorf("expected seq to be 0 with first event")
+			}
+
+			// ensure that the sequence number increases, but skips outdated packages
+			for i := 0; i < 2; i++ {
+				mock.readChan <- []byte(`{"op":0,"d":{"random":"data"},"s":1}`)
+				if payload, _, err = client.Read(mock); err != nil {
+					t.Fatal(err)
+				}
+
+				if client.SequenceNumber() != 1 {
+					t.Error("state failed to update sequence number")
+				}
+			}
+
+			if !payload.Outdated {
+				t.Error("when resending the same payload, it should have been marked outdated")
+			}
+		})
+		t.Run("populates-dispatch(op:0)", func(t *testing.T) {
+			client := newState()
+			mock := &IOMock{
+				readChan: make(chan []byte, 2),
+			}
+
+			evt := event.MessageCreate
+			evtstr, err := event.String(evt)
+			if err != nil {
+				t.Fatal("failed to parse event to string", err)
+			}
+
+			// write the data to pipe
+			str := fmt.Sprintf(`{"op":0,"d":{"random":"data"},"t":"%s"}`, evtstr)
+			mock.readChan <- []byte(str)
+
+			payload, _, err := client.Read(mock)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if payload.EventFlag != evt {
+				t.Errorf("incorrect event flag. Got %d, wants %d", payload.EventFlag, evt)
+			}
+			if payload.EventName != evtstr {
+				t.Errorf("incorrect event name. Got %s, wants %s", payload.EventName, evtstr)
+			}
+		})
+		t.Run("invalid-data", func(t *testing.T) {
+			client := newState()
+			mock := &IOMock{
+				readChan: make(chan []byte, 2),
+			}
+			close(mock.readChan)
+
+			_, _, err := client.Read(mock)
+			if err == nil {
+				t.Fatal("expected read to fail when io.Reader fails")
+			}
 		})
 	})
 	t.Run("close", func(t *testing.T) {
@@ -177,9 +246,17 @@ func TestClientState(t *testing.T) {
 			client := newState()
 			mock := &IOMockWithClosedConnection{}
 
-			if err := client.WriteClose(mock); err == nil {
-				t.Fatal("should fail with a 'closed pipe' error")
+			shouldFail := func(err error) {
+				if err == nil {
+					t.Fatal("should fail fast with a 'closed pipe' error")
+				}
 			}
+
+			shouldFail(client.WriteClose(mock))
+			shouldFail(client.Write(mock, opcode.EventHeartbeat, []byte(`{}`)))
+
+			_, _, err := client.Read(mock)
+			shouldFail(err)
 
 			if !client.Closed() {
 				t.Fatal("client was not closed")
