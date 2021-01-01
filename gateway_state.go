@@ -32,7 +32,7 @@ type GatewayReady struct {
 }
 
 type GatewayResume struct {
-	Token          string `json:"token"`
+	BotToken       string `json:"token"`
 	SessionID      string `json:"session_id"`
 	SequenceNumber int64  `json:"seq"`
 }
@@ -44,7 +44,7 @@ type GatewayIdentifyProperties struct {
 }
 
 type GatewayIdentify struct {
-	Token          string      `json:"token"`
+	BotToken       string      `json:"token"`
 	Properties     interface{} `json:"properties"`
 	Compress       bool        `json:"compress,omitempty"`
 	LargeThreshold uint8       `json:"large_threshold,omitempty"`
@@ -61,7 +61,7 @@ func NewGatewayClient(conf *GatewayStateConfig) *GatewayState {
 }
 
 type GatewayStateConfig struct {
-	Token               string
+	BotToken            string
 	Intents             intent.Flag
 	ShardID             uint
 	TotalNumberOfShards uint
@@ -131,7 +131,7 @@ func (gs *GatewayState) Heartbeat(client IOFlushWriter) error {
 // Identify Close method may be used if Write fails
 func (gs *GatewayState) Identify(client IOFlushWriter) error {
 	identifyPacket := &GatewayIdentify{
-		Token:          gs.conf.Token,
+		BotToken:       gs.conf.BotToken,
 		Properties:     &gs.conf.Properties,
 		Compress:       false,
 		LargeThreshold: 0,
@@ -159,7 +159,7 @@ func (gs *GatewayState) Resume(client IOFlushWriter) error {
 		return errors.New("missing session id, can not resume connection")
 	}
 	resumePacket := &GatewayResume{
-		Token:          gs.conf.Token,
+		BotToken:       gs.conf.BotToken,
 		SessionID:      gs.sessionID,
 		SequenceNumber: gs.SequenceNumber(),
 	}

@@ -14,17 +14,47 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/andersfylling/discordgateway/event"
+	"github.com/andersfylling/discordgateway/intent"
 	"github.com/andersfylling/discordgateway/json"
 	"github.com/andersfylling/discordgateway/log"
 	"github.com/andersfylling/discordgateway/opcode"
 )
 
-func NewShard(whitelist event.Flag, handler func(event.Flag, []byte), conf *GatewayStateConfig) *Shard {
-	return &Shard{
-		NewGatewayClient(conf),
-		whitelist,
-		handler,
+type ShardConfig struct {
+	BotToken string
+
+	ShardID             uint
+	TotalNumberOfShards uint
+
+	IdentifyProperties GatewayIdentifyProperties
+
+	Events event.Flag
+
+	// DMIntents if your application requires events related to direct messaging. You can explicitly specify them here.
+	// specifying intents outside of the direct message scope will cause an error.
+	//
+	// Intents are derived from the specified events: Events
+	DMIntents intent.Flag
+}
+
+func NewShard(handler func(event.Flag, []byte), conf *ShardConfig) (*Shard, error) {
+	derivedIntents, err := intent.EventsToIntents(conf.Events, false)
+	if err != nil {
+		return nil, fmt.Errorf("unable to derive intents from events: %w", err)
 	}
+
+	gatewayConf := GatewayStateConfig{
+		BotToken:            conf.BotToken,
+		Intents:             conf.DMIntents | derivedIntents,
+		ShardID:             conf.ShardID,
+		TotalNumberOfShards: conf.TotalNumberOfShards,
+		Properties:          conf.IdentifyProperties,
+	}
+	return &Shard{
+		NewGatewayClient(&gatewayConf),
+		conf.Events,
+		handler,
+	}, nil
 }
 
 type Shard struct {

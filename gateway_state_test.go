@@ -51,7 +51,7 @@ func TestGatewayState_Identify(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		client := NewGatewayState()
 		client.conf = GatewayStateConfig{
-			Token:               "kaicyeurtbecgresn",
+			BotToken:            "kaicyeurtbecgresn",
 			Intents:             1,
 			ShardID:             0,
 			TotalNumberOfShards: 1,
@@ -82,8 +82,8 @@ func TestGatewayState_Identify(t *testing.T) {
 			t.Errorf("unexpect %s. Got '%+v', wants '%+v'", name, got, wants)
 		}
 
-		if client.conf.Token != identify.Token {
-			incorrect("Token", identify.Token, client.conf.Token)
+		if client.conf.BotToken != identify.BotToken {
+			incorrect("Token", identify.BotToken, client.conf.BotToken)
 		}
 		if client.conf.ShardID != identify.Shard[0] {
 			incorrect("ShardID", identify.Shard[0], client.conf.ShardID)
@@ -100,7 +100,7 @@ func TestGatewayState_Resume(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		client := NewGatewayState()
 		client.conf = GatewayStateConfig{
-			Token:               "kaicyeurtbecgresn",
+			BotToken:            "kaicyeurtbecgresn",
 			Intents:             1,
 			ShardID:             0,
 			TotalNumberOfShards: 1,
@@ -132,13 +132,13 @@ func TestGatewayState_Resume(t *testing.T) {
 			t.Errorf("unexpect %s. Got '%+v', wants '%+v'", name, v1, v2)
 		}
 
-		if client.conf.Token != resume.Token {
-			incorrect("Token", resume.Token, client.conf.Token)
+		if client.conf.BotToken != resume.BotToken {
+			incorrect("Token", resume.BotToken, client.conf.BotToken)
 		}
 		if client.sessionID != resume.SessionID {
 			incorrect("sessionID", resume.SessionID, client.sessionID)
 		}
-		if client.conf.Token != resume.Token {
+		if client.conf.BotToken != resume.BotToken {
 			incorrect("sequence number", resume.SequenceNumber, client.SequenceNumber())
 		}
 	})

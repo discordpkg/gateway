@@ -13,6 +13,7 @@ import (
 
 	"github.com/andersfylling/discordgateway"
 	"github.com/andersfylling/discordgateway/event"
+	"github.com/andersfylling/discordgateway/intent"
 	"github.com/andersfylling/discordgateway/log"
 	"github.com/andersfylling/discordgateway/opcode"
 )
@@ -76,7 +77,6 @@ func main() {
 func listen(logger *logrus.Logger, token string) {
 	logger.Warn("STARTED")
 
-
 	logger.SetLevel(logrus.DebugLevel)
 	logger.SetFormatter(&logrus.TextFormatter{
 		ForceColors:               true,
@@ -85,16 +85,20 @@ func listen(logger *logrus.Logger, token string) {
 		TimestampFormat:           "",
 	})
 
-	shard := discordgateway.NewShard(event.All(), nil, &discordgateway.GatewayStateConfig{
-		Token: token,
-		Intents: 0b111111111111111, // everything
+	shard, err := discordgateway.NewShard(nil, &discordgateway.ShardConfig{
+		BotToken: token,
+		Events: event.All(),
+		DMIntents: intent.DirectMessageReactions | intent.DirectMessageTyping | intent.DirectMessages,
 		TotalNumberOfShards: 1,
-		Properties:discordgateway.GatewayIdentifyProperties{
+		IdentifyProperties: discordgateway.GatewayIdentifyProperties{
 			OS:      "linux",
 			Browser: "github.com/andersfylling/discordgateway v0",
 			Device:  "tester",
 		},
 	})
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	path := "wss://gateway.discord.gg/?v=8&encoding=json"
 	u, err := url.Parse(path)
