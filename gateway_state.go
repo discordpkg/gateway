@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/andersfylling/discordgateway/event"
 	"github.com/andersfylling/discordgateway/json"
 
 	"go.uber.org/atomic"
@@ -101,6 +102,23 @@ func (gs *GatewayState) Write(client IOFlushWriter, op opcode.OpCode, payload js
 	}
 
 	return gs.state.Write(client, op, payload)
+}
+
+func (gs *GatewayState) Read(client IOReader) (*GatewayPayload, int, error) {
+	payload, length, err := gs.state.Read(client)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if payload.EventFlag == event.Ready {
+		// need to store session ID for resume
+		var ready *GatewayReady
+		if err := json.Unmarshal(payload.Data, &ready); err != nil {
+			return payload, length, fmt.Errorf("failed to extract session id from ready event. %w", err)
+		}
+		gs.sessionID = ready.SessionID
+	}
+	return payload, length, nil
 }
 
 // Heartbeat Close method may be used if Write fails

@@ -173,13 +173,6 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 			if s.handler != nil {
 				s.handler(payload.EventFlag, payload.Data)
 			}
-			if payload.EventFlag == event.Ready {
-				var ready *GatewayReady
-				if err := json.Unmarshal(payload.Data, &ready); err != nil {
-					return payload.Op, fmt.Errorf("failed to extract session id from ready event. %w", err)
-				}
-				s.GatewayState.sessionID = ready.SessionID
-			}
 		case opcode.EventHeartbeat:
 			if err := s.Heartbeat(writer); err != nil {
 				return payload.Op, fmt.Errorf("discord requested heartbeat, but was unable to send one. %w", err)
