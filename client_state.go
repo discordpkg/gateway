@@ -39,6 +39,8 @@ type state interface {
 	SequenceNumber() int64
 	Closed() bool
 	WriteClose(client IOFlushWriter) error
+	WriteNormalClose(client IOFlushWriter) error
+	WriteRestartClose(client IOFlushWriter) error
 	Read(client IOReader) (*GatewayPayload, int, error)
 	Write(client IOFlushWriter, opCode opcode.OpCode, payload json.RawMessage) (err error)
 }
@@ -58,12 +60,25 @@ func (c *clientState) Closed() bool {
 	return c.stateClosed.Load()
 }
 
+// Deprecated
 func (c *clientState) WriteClose(client IOFlushWriter) error {
+	return c.WriteNormalClose(client)
+}
+
+func (c *clientState) WriteNormalClose(client IOFlushWriter) error {
+	return c.writeClose(client, 1000)
+}
+
+func (c *clientState) WriteRestartClose(client IOFlushWriter) error {
+	return c.writeClose(client, 1012)
+}
+
+func (c *clientState) writeClose(client IOFlushWriter, code uint16) error {
 	if c.stateClosed.CAS(false, true) {
 		// there is no real benefit to give Discord a reason.
 		// relevant errors should instead be logged for diagnostic purposes.
 		closeCodeBuf := make([]byte, 2)
-		binary.BigEndian.PutUint16(closeCodeBuf, uint16(1000))
+		binary.BigEndian.PutUint16(closeCodeBuf, code)
 
 		if _, err := client.Write(closeCodeBuf); err != nil {
 			return fmt.Errorf("unable to write close code to Discord. %w", err)

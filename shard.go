@@ -96,22 +96,22 @@ func (s *Shard) Dial(ctx context.Context, u *url.URL) (connection net.Conn, err 
 	return conn, nil
 }
 
-func writeClose(state *GatewayState, conn net.Conn, reason string) error {
+func writeClose(closer func(IOFlushWriter) error, conn net.Conn, reason string) error {
 	log.Info("shard sent close frame: ", reason)
 	closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)
-	if err := state.WriteClose(closeWriter); err != nil {
+	if err := closer(closeWriter); err != nil {
 		return fmt.Errorf("failed to write close frame. %w", err)
 	}
 	return nil
 }
 
 func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, error) {
-	allowResume := atomic.Bool{}
+	sessionInvalidated := atomic.Bool{}
 	defer func() {
-		resume := allowResume.Load()
+		invalid := sessionInvalidated.Load()
 		hasSessionID := s.HaveSessionID()
-		log.Debug("cleanup: ", resume, hasSessionID)
-		if resume && hasSessionID {
+		log.Debug("cleanup: ", invalid, hasSessionID)
+		if !invalid && hasSessionID {
 			s.GatewayState = &GatewayState{
 				conf:      s.GatewayState.conf,
 				state:     newStateWithSeqNumber(s.SequenceNumber()),
@@ -132,7 +132,13 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 		if s.Closed() {
 			return
 		}
-		if err := writeClose(s.GatewayState, conn, "program shutdown"); err != nil {
+		var closer func(IOFlushWriter) error
+		if sessionInvalidated.Load() {
+			closer = s.GatewayState.WriteNormalClose
+		} else {
+			closer = s.GatewayState.WriteRestartClose
+		}
+		if err := writeClose(closer, conn, "program shutdown"); err != nil {
 			log.Fatal("failed to close connection properly: ", err)
 		}
 		_ = conn.Close()
@@ -172,8 +178,9 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 						_ = conn.Close()
 					}
 					switch normalClose.Code {
-					case 1001, 4000:
-						allowResume.Store(true)
+					case 1001, 4000: // allow resume
+					default:
+						sessionInvalidated.Store(true)
 					}
 					return opcode.Invalid, &CloseError{Code: uint(normalClose.Code), Reason: normalClose.Reason}
 				} else {
@@ -208,9 +215,9 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 				return payload.Op, fmt.Errorf("discord requested heartbeat, but was unable to send one. %w", err)
 			}
 		case opcode.EventReconnect:
-			allowResume.Store(true)
 			return payload.Op, nil
 		case opcode.EventInvalidSession:
+			sessionInvalidated.Store(true)
 			return payload.Op, nil
 		case opcode.EventHello:
 			if s.HaveIdentified() {
@@ -289,7 +296,7 @@ loop:
 	}
 
 	plannedTimeoutWindow := 5 * time.Second
-	if err := writeClose(h.shard, h.conn, "heart beat failure"); err != nil {
+	if err := writeClose(h.shard.WriteRestartClose, h.conn, "heart beat failure"); err != nil {
 		plannedTimeoutWindow = 100 * time.Millisecond
 	}
 
