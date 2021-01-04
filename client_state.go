@@ -38,7 +38,6 @@ func newStateWithSeqNumber(seq int64) *clientState {
 type state interface {
 	SequenceNumber() int64
 	Closed() bool
-	WriteClose(client IOFlushWriter) error
 	WriteNormalClose(client IOFlushWriter) error
 	WriteRestartClose(client IOFlushWriter) error
 	Read(client IOReader) (*GatewayPayload, int, error)
@@ -58,11 +57,6 @@ func (c *clientState) SequenceNumber() int64 {
 
 func (c *clientState) Closed() bool {
 	return c.stateClosed.Load()
-}
-
-// Deprecated
-func (c *clientState) WriteClose(client IOFlushWriter) error {
-	return c.WriteNormalClose(client)
 }
 
 func (c *clientState) WriteNormalClose(client IOFlushWriter) error {

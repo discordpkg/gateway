@@ -112,8 +112,8 @@ func (gs *GatewayState) Read(client IOReader) (*GatewayPayload, int, error) {
 
 	if payload.EventFlag == event.Ready {
 		// need to store session ID for resume
-		var ready *GatewayReady
-		if err := json.Unmarshal(payload.Data, &ready); err != nil {
+		ready := GatewayReady{}
+		if err := json.Unmarshal(payload.Data, &ready); err != nil || ready.SessionID == "" {
 			return payload, length, fmt.Errorf("failed to extract session id from ready event. %w", err)
 		}
 		gs.sessionID = ready.SessionID

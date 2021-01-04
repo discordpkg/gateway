@@ -2,6 +2,7 @@ package discordgateway
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -217,12 +218,54 @@ func TestClientState(t *testing.T) {
 		})
 	})
 	t.Run("close", func(t *testing.T) {
+		t.Run("normal", func(t *testing.T) {
+			client := newState()
+			mock := &IOMock{
+				writeChan: make(chan []byte, 2),
+			}
+			if err := client.WriteNormalClose(mock); err != nil {
+				t.Fatal("unable to write close code: ", err)
+			}
+
+			var data []byte
+			select {
+			case data = <-mock.writeChan:
+			default:
+				t.Fatal("nothing found on write channel")
+			}
+
+			code := binary.BigEndian.Uint16(data)
+			if code != 1000 {
+				t.Errorf("expected close code to be 1000, but got %d", int(code))
+			}
+		})
+		t.Run("restart", func(t *testing.T) {
+			client := newState()
+			mock := &IOMock{
+				writeChan: make(chan []byte, 2),
+			}
+			if err := client.WriteRestartClose(mock); err != nil {
+				t.Fatal("unable to write close code: ", err)
+			}
+
+			var data []byte
+			select {
+			case data = <-mock.writeChan:
+			default:
+				t.Fatal("nothing found on write channel")
+			}
+
+			code := binary.BigEndian.Uint16(data)
+			if code == 1000 {
+				t.Errorf("normal close code received, expected something different")
+			}
+		})
 		t.Run("success", func(t *testing.T) {
 			client := newState()
 			mock := &IOMock{
 				writeChan: make(chan []byte, 2),
 			}
-			if err := client.WriteClose(mock); err != nil {
+			if err := client.WriteNormalClose(mock); err != nil {
 				t.Fatal("unable to write close code: ", err)
 			}
 
@@ -238,7 +281,7 @@ func TestClientState(t *testing.T) {
 			if _, _, err := client.Read(mock); !(err != nil && errors.Is(err, io.ErrClosedPipe)) {
 				t.Errorf("expected closed pipe error. Got: %+v", err)
 			}
-			if err := client.WriteClose(mock); !(err != nil && errors.Is(err, io.ErrClosedPipe)) {
+			if err := client.WriteNormalClose(mock); !(err != nil && errors.Is(err, io.ErrClosedPipe)) {
 				t.Errorf("expected closed pipe error. Got: %+v", err)
 			}
 		})
@@ -252,7 +295,7 @@ func TestClientState(t *testing.T) {
 				}
 			}
 
-			shouldFail(client.WriteClose(mock))
+			shouldFail(client.WriteNormalClose(mock))
 			shouldFail(client.Write(mock, opcode.EventHeartbeat, []byte(`{}`)))
 
 			_, _, err := client.Read(mock)
