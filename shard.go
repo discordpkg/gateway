@@ -108,10 +108,7 @@ func writeClose(closer func(IOFlushWriter) error, conn net.Conn, reason string) 
 func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, error) {
 	sessionInvalidated := atomic.Bool{}
 	defer func() {
-		invalid := sessionInvalidated.Load()
-		hasSessionID := s.HaveSessionID()
-		log.Debug("cleanup: ", invalid, hasSessionID)
-		if !invalid && hasSessionID {
+		if !sessionInvalidated.Load() && s.HaveSessionID() {
 			s.GatewayState = &GatewayState{
 				conf:      s.GatewayState.conf,
 				state:     newStateWithSeqNumber(s.SequenceNumber()),
