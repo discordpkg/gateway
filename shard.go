@@ -136,11 +136,13 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 			closer = s.GatewayState.WriteRestartClose
 		}
 		if err := writeClose(closer, conn, "program shutdown"); err != nil {
-			log.Fatal("failed to close connection properly: ", err)
+			log.Error("failed to close connection properly: ", err)
 		}
 		_ = conn.Close()
 	}
 	defer closeConnection()
+
+	//sentReq := atomic.Bool{}
 
 	writer := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpText)
 	controlHandler := wsutil.ControlFrameHandler(conn, ws.StateClientSide)
@@ -207,6 +209,13 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 			if s.handler != nil {
 				s.handler(payload.EventFlag, payload.Data)
 			}
+
+			// if sentReq.CAS(false, true) {
+			// 	reqErr := s.Write(writer, opcode.EventRequestGuildMembers, []byte(`{"guild_id":"81384788765712384","query":"","limit":1000}`))
+			// 	if reqErr != nil {
+			// 		fmt.Println("failed to request members")
+			// 	}
+			// }
 		case opcode.EventHeartbeat:
 			if err := s.Heartbeat(writer); err != nil {
 				return payload.Op, fmt.Errorf("discord requested heartbeat, but was unable to send one. %w", err)

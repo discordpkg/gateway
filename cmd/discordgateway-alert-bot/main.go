@@ -58,7 +58,7 @@ func main() {
 		BotToken: token,
 	})
 	logger.Info("Disgord config valid")
-	// u, err := client.BotAuthorizeURL()
+	// _, _ = client.BotAuthorizeURL()
 	// if err != nil {
 	// 	logrus.Fatal("unable to generate authorization url: ", err)
 	// } else {
@@ -74,6 +74,11 @@ func main() {
 	listen(logger, token)
 }
 
+type DiscordEvent struct {
+	Topic event.Flag
+	Data []byte
+}
+
 func listen(logger *logrus.Logger, token string) {
 	logger.Warn("STARTED")
 
@@ -85,6 +90,11 @@ func listen(logger *logrus.Logger, token string) {
 		TimestampFormat:           "",
 	})
 
+	// listener := make(chan *DiscordEvent)
+	// registerListener := func(f event.Flag, d []byte) {
+	// 	listener <- &DiscordEvent{f, d}
+	// }
+	
 	shard, err := discordgateway.NewShard(nil, &discordgateway.ShardConfig{
 		BotToken: token,
 		Events: event.All(),
@@ -99,6 +109,35 @@ func listen(logger *logrus.Logger, token string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	
+	// life, kill := context.WithCancel(context.Background())
+	// defer kill()
+	// 
+	// go func(){
+	// 	for {
+	// 		var evt *DiscordEvent
+	// 		select {
+	// 		case <-life.Done():
+	// 			return
+	// 		case evt = <-listener:
+	// 		}
+	// 		if evt == nil {
+	// 			continue
+	// 		}
+	// 
+	// 		if (evt.Topic & event.GuildMembersChunk) > 0 {
+	// 			filename := "guild-members-chunk.json"
+	// 			fmt.Println(len(evt.Data))
+	// 			if e := ioutil.WriteFile(filename, evt.Data, 0644); e != nil {
+	// 				fmt.Println(string(evt.Data))
+	// 				logger.Error("issue opening/creating file: ", e)
+	// 				continue
+	// 			}
+	// 			logger.Info("saved file " + filename)
+	// 			<-time.After(2*time.Second)
+	// 		}
+	// 	}
+	// }()
 
 	path := "wss://gateway.discord.gg/?v=8&encoding=json"
 	u, err := url.Parse(path)
