@@ -2,7 +2,9 @@ package discordgateway
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"testing"
 
@@ -151,6 +153,17 @@ func TestGatewayState_Identify(t *testing.T) {
 			incorrect("Intents", identify.Intents, client.conf.Intents)
 		}
 	})
+	t.Run("failed-to-write", func(t *testing.T) {
+		client := NewGatewayState()
+		client.sessionID = "sgrtxfh"
+		closedMock := &IOMockWithClosedConnection{IOMock{}}
+
+		if err := client.Identify(closedMock); err == nil {
+			t.Fatal("write should have returned a error")
+		} else if !errors.Is(err, io.ErrClosedPipe) {
+			t.Fatalf("incorrect error. Got %+v", err)
+		}
+	})
 }
 func TestGatewayState_Resume(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
@@ -207,6 +220,17 @@ func TestGatewayState_Resume(t *testing.T) {
 
 		if err := client.Resume(mock); err == nil {
 			t.Fatal("should not be able to resume if session id is not set")
+		}
+	})
+	t.Run("failed-to-write", func(t *testing.T) {
+		client := NewGatewayState()
+		client.sessionID = "sgrtxfh"
+		closedMock := &IOMockWithClosedConnection{IOMock{}}
+
+		if err := client.Resume(closedMock); err == nil {
+			t.Fatal("write should have returned a error")
+		} else if !errors.Is(err, io.ErrClosedPipe) {
+			t.Fatalf("incorrect error. Got %+v", err)
 		}
 	})
 }
