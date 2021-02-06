@@ -174,6 +174,14 @@ reconnect:
 				logger.Errorf("unhandled close error, with discord op code(%d): %d", op, discordErr.Code)
 			}
 		}
+		var errClosed *discordgateway.ErrClosed
+		if errors.As(err, &errClosed) {
+			logger.Debug("errClosed - creating resume client")
+			if !shard.HaveSessionID() {
+				logger.Fatal("expected session id to exist")
+			}
+			goto reconnect
+		}
 		logger.Error("event loop stopped: ", err)
 	} else {
 		logger.Infof("event loop exited with op code: %s", op)

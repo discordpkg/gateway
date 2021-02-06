@@ -20,6 +20,15 @@ import (
 	"github.com/andersfylling/discordgateway/opcode"
 )
 
+// ErrClosed https://tip.golang.org/pkg/net/#ErrClosed
+type ErrClosed struct {
+	err error
+}
+
+func (e ErrClosed) Error() string {
+	return e.err.Error()
+}
+
 type ShardConfig struct {
 	BotToken string
 
@@ -166,7 +175,13 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 				return opcode.Invalid, fmt.Errorf("closed connection due to timeout. %w", err)
 			} else {
 				_ = conn.Close()
-				return opcode.Invalid, fmt.Errorf("failed to load next frame. %w", err)
+				closedConnection := strings.Contains(err.Error(), "use of closed network connection")
+				closedConnection = closedConnection || strings.Contains(err.Error(), "use of closed connection")
+				if closedConnection {
+					return opcode.Invalid, &ErrClosed{err}
+				} else {
+					return opcode.Invalid, fmt.Errorf("failed to load next frame. %w", err)
+				}
 			}
 		}
 		if hdr.OpCode.IsControl() {
