@@ -109,7 +109,8 @@ func (s *Shard) Dial(ctx context.Context, u *url.URL) (connection net.Conn, err 
 func writeClose(closer func(IOFlushWriter) error, conn net.Conn, reason string) error {
 	log.Info("shard sent close frame: ", reason)
 	closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)
-	if err := closer(closeWriter); err != nil {
+	if err := closer(closeWriter); err != nil && !errors.Is(err, net.ErrClosed) {
+		// if the connection is already closed, it's not a big deal that we can't write the close code
 		return fmt.Errorf("failed to write close frame. %w", err)
 	}
 	return nil
