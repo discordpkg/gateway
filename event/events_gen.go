@@ -4,11 +4,11 @@ package event
 // Warning: This file is overwritten at "go generate", instead adapt internal/constants/events.go and run go generate
 
 import (
+	"errors"
 	"fmt"
+	"math/bits"
 	"strings"
 )
-import "errors"
-import "math/bits"
 
 type UnsupportedErr struct {
 	UnsupportedFlags Flag

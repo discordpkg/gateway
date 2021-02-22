@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/url"
 	"strings"
@@ -167,17 +168,16 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 	for {
 		hdr, err := rd.NextFrame()
 		if err != nil {
+			_ = conn.Close()
 			// check for the "historical" i/o timeout message
 			// net.go@timeoutErr # ~583 at 2020-12-25
 			const ioTimeoutMessage = "i/o timeout"
 			if strings.Contains(err.Error(), ioTimeoutMessage) && forcedReadTimeout.Load() {
-				_ = conn.Close()
 				return opcode.Invalid, fmt.Errorf("closed connection due to timeout. %w", err)
 			} else {
-				_ = conn.Close()
 				closedConnection := strings.Contains(err.Error(), "use of closed network connection")
 				closedConnection = closedConnection || strings.Contains(err.Error(), "use of closed connection")
-				if closedConnection {
+				if closedConnection || errors.Is(err, io.EOF) {
 					return opcode.Invalid, &ErrClosed{err}
 				} else {
 					return opcode.Invalid, fmt.Errorf("failed to load next frame. %w", err)

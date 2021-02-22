@@ -1,6 +1,6 @@
 module github.com/andersfylling/discordgateway
 
-go 1.15
+go 1.16
 
 require (
 	github.com/gobwas/httphead v0.1.0 // indirect

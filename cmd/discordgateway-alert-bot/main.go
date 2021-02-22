@@ -23,6 +23,7 @@ const EnvDiscordToken = "DISCORD_TOKEN"
 type errorHook struct {
 	discordClient *disgord.Client
 }
+
 var _ logrus.Hook = &errorHook{}
 
 func (e errorHook) Levels() []logrus.Level {
@@ -36,7 +37,7 @@ func (e errorHook) Levels() []logrus.Level {
 
 func (e errorHook) Fire(entry *logrus.Entry) error {
 	_, err := e.discordClient.Channel(792482633438199860).CreateMessage(&disgord.CreateMessageParams{
-		Content:                  fmt.Sprintf("[%s] %s", entry.Level.String(), entry.Message),
+		Content: fmt.Sprintf("[%s] %s", entry.Level.String(), entry.Message),
 	})
 	if err != nil {
 		return fmt.Errorf("unable to dispatch discord message. %w", err)
@@ -45,11 +46,10 @@ func (e errorHook) Fire(entry *logrus.Entry) error {
 	}
 }
 
-
 func main() {
 	logger := logrus.New()
 	log.LogInstance = logger
-	
+
 	token := os.Getenv(EnvDiscordToken)
 	if token == "" {
 		logrus.Fatalf("Environment variable '%s' was not set", EnvDiscordToken)
@@ -70,13 +70,13 @@ func main() {
 		discordClient: client,
 	}
 	logger.AddHook(hook)
-	
+
 	listen(logger, token)
 }
 
 type DiscordEvent struct {
 	Topic event.Flag
-	Data []byte
+	Data  []byte
 }
 
 func listen(logger *logrus.Logger, token string) {
@@ -84,21 +84,21 @@ func listen(logger *logrus.Logger, token string) {
 
 	logger.SetLevel(logrus.DebugLevel)
 	logger.SetFormatter(&logrus.TextFormatter{
-		ForceColors:               true,
-		DisableTimestamp:          false,
-		FullTimestamp:             true,
-		TimestampFormat:           "",
+		ForceColors:      true,
+		DisableTimestamp: false,
+		FullTimestamp:    true,
+		TimestampFormat:  "",
 	})
 
 	// listener := make(chan *DiscordEvent)
 	// registerListener := func(f event.Flag, d []byte) {
 	// 	listener <- &DiscordEvent{f, d}
 	// }
-	
+
 	shard, err := discordgateway.NewShard(nil, &discordgateway.ShardConfig{
-		BotToken: token,
-		Events: event.All(),
-		DMIntents: intent.DirectMessageReactions | intent.DirectMessageTyping | intent.DirectMessages,
+		BotToken:            token,
+		Events:              event.All(),
+		DMIntents:           intent.DirectMessageReactions | intent.DirectMessageTyping | intent.DirectMessages,
 		TotalNumberOfShards: 1,
 		IdentifyProperties: discordgateway.GatewayIdentifyProperties{
 			OS:      "linux",
@@ -109,10 +109,10 @@ func listen(logger *logrus.Logger, token string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	// life, kill := context.WithCancel(context.Background())
 	// defer kill()
-	// 
+	//
 	// go func(){
 	// 	for {
 	// 		var evt *DiscordEvent
@@ -124,7 +124,7 @@ func listen(logger *logrus.Logger, token string) {
 	// 		if evt == nil {
 	// 			continue
 	// 		}
-	// 
+	//
 	// 		if (evt.Topic & event.GuildMembersChunk) > 0 {
 	// 			filename := "guild-members-chunk.json"
 	// 			fmt.Println(len(evt.Data))
@@ -150,7 +150,6 @@ reconnect:
 	if err != nil {
 		logger.Fatalf("failed to open websocket connection. %w", err)
 	}
-	
 
 	if op, err := shard.EventLoop(context.Background(), conn); err != nil {
 		var discordErr *discordgateway.CloseError
@@ -201,6 +200,5 @@ reconnect:
 		}
 	}
 	logger.Warn("STOPPED")
-	<-time.After(5*time.Second)
+	<-time.After(5 * time.Second)
 }
-

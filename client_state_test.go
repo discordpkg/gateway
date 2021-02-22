@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"testing"
 	"time"
 
@@ -47,7 +48,7 @@ func (m *IOMock) Read(p []byte) (n int, err error) {
 		select {
 		case msg, ok := <-m.readChan:
 			if !ok {
-				return 0, io.ErrClosedPipe
+				return 0, net.ErrClosed
 			}
 			m.readBuf = bytes.NewReader(msg)
 		case <-time.After(time.Millisecond):
@@ -71,7 +72,7 @@ type IOMockWithClosedConnection struct {
 }
 
 func (m *IOMockWithClosedConnection) Write(p []byte) (n int, err error) {
-	return 0, io.ErrClosedPipe
+	return 0, net.ErrClosed
 }
 
 func TestClientState(t *testing.T) {
@@ -119,8 +120,8 @@ func TestClientState(t *testing.T) {
 				t.Fatal("expected heartbeat to fail when writing to closed connection")
 			}
 
-			if !errors.Is(err, io.ErrClosedPipe) {
-				t.Fatal("close error was not io.ErrClosedPipe")
+			if !errors.Is(err, net.ErrClosed) {
+				t.Fatal("close error was not net.ErrClosed")
 			}
 		})
 	})
@@ -278,10 +279,10 @@ func TestClientState(t *testing.T) {
 				t.Fatal("expected payload data")
 			}
 
-			if _, _, err := client.Read(mock); !(err != nil && errors.Is(err, io.ErrClosedPipe)) {
+			if _, _, err := client.Read(mock); !(err != nil && errors.Is(err, net.ErrClosed)) {
 				t.Errorf("expected closed pipe error. Got: %+v", err)
 			}
-			if err := client.WriteNormalClose(mock); !(err != nil && errors.Is(err, io.ErrClosedPipe)) {
+			if err := client.WriteNormalClose(mock); !(err != nil && errors.Is(err, net.ErrClosed)) {
 				t.Errorf("expected closed pipe error. Got: %+v", err)
 			}
 		})
