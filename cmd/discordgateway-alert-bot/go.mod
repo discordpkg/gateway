@@ -1,6 +1,6 @@
 module main
 
-go 1.15
+go 1.16
 
 require (
 	github.com/andersfylling/discordgateway v0.0.0-20200623095051-5cb9417c141f

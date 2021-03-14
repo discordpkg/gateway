@@ -1,4 +1,4 @@
-FROM golang:1.15.6-alpine3.12
+FROM golang:1.16.2-alpine3.13
 WORKDIR /build
 COPY . /build
 RUN rm -rf .git

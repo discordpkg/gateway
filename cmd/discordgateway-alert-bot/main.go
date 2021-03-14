@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/url"
 	"os"
 	"time"
@@ -174,7 +176,7 @@ reconnect:
 			}
 		}
 		var errClosed *discordgateway.ErrClosed
-		if errors.As(err, &errClosed) {
+		if errors.As(err, &errClosed) || errors.Is(err, net.ErrClosed) || errors.Is(err, io.ErrClosedPipe) {
 			logger.Debug("errClosed - creating resume client")
 			if !shard.HaveSessionID() {
 				logger.Fatal("expected session id to exist")
