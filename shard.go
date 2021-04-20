@@ -117,9 +117,8 @@ func writeClose(closer func(IOFlushWriter) error, conn net.Conn, reason string) 
 }
 
 func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, error) {
-	sessionInvalidated := atomic.Bool{}
 	defer func() {
-		if !sessionInvalidated.Load() && s.HaveSessionID() {
+		if s.HaveSessionID() {
 			s.GatewayState = &GatewayState{
 				conf:      s.GatewayState.conf,
 				state:     newStateWithSeqNumber(s.SequenceNumber()),
@@ -140,13 +139,8 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 		if s.Closed() {
 			return
 		}
-		var closer func(IOFlushWriter) error
-		if sessionInvalidated.Load() {
-			closer = s.GatewayState.WriteNormalClose
-		} else {
-			closer = s.GatewayState.WriteRestartClose
-		}
-		if err := writeClose(closer, conn, "program shutdown"); err != nil {
+
+		if err := writeClose(s.GatewayState.WriteRestartClose, conn, "program shutdown"); err != nil {
 			log.Error("failed to close connection properly: ", err)
 		}
 		_ = conn.Close()
@@ -195,7 +189,8 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 					switch normalClose.Code {
 					case 1001, 4000: // allow resume
 					default:
-						sessionInvalidated.Store(true)
+						closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)
+						s.InvalidateSession(closeWriter)
 					}
 					return opcode.Invalid, &CloseError{Code: uint(normalClose.Code), Reason: normalClose.Reason}
 				} else {
@@ -220,40 +215,24 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 			return opcode.Invalid, errors.New("no data was actually read. Byte slice payload had a length of 0")
 		}
 
+		redundant, err := s.DemultiplexEvent(payload, writer)
+		if redundant {
+			continue
+		}
+		if err != nil {
+			return payload.Op, err
+		}
+
 		switch payload.Op {
 		case opcode.EventDispatch:
 			if s.handler != nil {
 				s.handler(payload.EventFlag, payload.Data)
 			}
-
-			// if sentReq.CAS(false, true) {
-			// 	reqErr := s.Write(writer, opcode.EventRequestGuildMembers, []byte(`{"guild_id":"81384788765712384","query":"","limit":1000}`))
-			// 	if reqErr != nil {
-			// 		fmt.Println("failed to request members")
-			// 	}
-			// }
-		case opcode.EventHeartbeat:
-			if err := s.Heartbeat(writer); err != nil {
-				return payload.Op, fmt.Errorf("discord requested heartbeat, but was unable to send one. %w", err)
-			}
-		case opcode.EventReconnect:
-			return payload.Op, nil
 		case opcode.EventInvalidSession:
-			sessionInvalidated.Store(true)
+			closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)
+			s.InvalidateSession(closeWriter)
 			return payload.Op, nil
 		case opcode.EventHello:
-			if s.HaveIdentified() {
-				continue
-			}
-			if s.HaveSessionID() {
-				if err := s.Resume(writer); err != nil {
-					return payload.Op, fmt.Errorf("sending resume failed. closing. %w", err)
-				}
-			} else {
-				if err := s.Identify(writer); err != nil {
-					return payload.Op, fmt.Errorf("identify failed. closing. %w", err)
-				}
-			}
 			var hello *GatewayHello
 			if err := json.Unmarshal(payload.Data, &hello); err != nil {
 				return payload.Op, fmt.Errorf("failed to extract heartbeat from hello message. %w", err)

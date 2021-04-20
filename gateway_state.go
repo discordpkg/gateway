@@ -3,10 +3,10 @@ package discordgateway
 import (
 	"errors"
 	"fmt"
-	"strconv"
-
 	"github.com/andersfylling/discordgateway/event"
 	"github.com/andersfylling/discordgateway/json"
+	"net"
+	"strconv"
 
 	"go.uber.org/atomic"
 
@@ -182,4 +182,40 @@ func (gs *GatewayState) HaveSessionID() bool {
 
 func (gs *GatewayState) HaveIdentified() bool {
 	return gs.sentResumeOrIdentify.Load()
+}
+
+func (gs *GatewayState) InvalidateSession(closeWriter IOFlushCloseWriter) {
+	if err := gs.WriteNormalClose(closeWriter); err != nil && !errors.Is(err, net.ErrClosed) {
+		// TODO: so what?
+	}
+	gs.sessionID = ""
+	gs.state = nil
+}
+
+func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, writer IOFlushWriter) (redundant bool, err error) {
+	switch payload.Op {
+	case opcode.EventHeartbeat:
+		if err := gs.Heartbeat(writer); err != nil {
+			return false, fmt.Errorf("discord requested heartbeat, but was unable to send one. %w", err)
+		}
+	case opcode.EventHello:
+		if gs.HaveIdentified() {
+			return true, nil
+		}
+		if gs.HaveSessionID() {
+			if err := gs.Resume(writer); err != nil {
+				return false, fmt.Errorf("sending resume failed. closing. %w", err)
+			}
+		} else {
+			if err := gs.Identify(writer); err != nil {
+				return false, fmt.Errorf("identify failed. closing. %w", err)
+			}
+		}
+	case opcode.EventDispatch, opcode.EventHeartbeatACK, opcode.EventInvalidSession, opcode.EventReconnect:
+		return false, nil
+	default:
+		// TODO: log new unhandled operation code
+	}
+
+	return true, nil
 }

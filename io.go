@@ -26,6 +26,8 @@ type IOFlushWriter interface {
 	IOWriter
 }
 
+type IOFlushCloseWriter = IOFlushWriter
+
 type IOFlushReadWriter interface {
 	IOFlusher
 	IOReader
