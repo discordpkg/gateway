@@ -78,7 +78,12 @@ type Shard struct {
 //  "wss://gateway.discord.gg/"                     => invalid
 //  "wss://gateway.discord.gg/?v=8"                 => invalid
 //  "wss://gateway.discord.gg/?v=8&encoding=json"   => valid
-func (s *Shard) Dial(ctx context.Context, u *url.URL) (connection net.Conn, err error) {
+func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn, err error) {
+	u, urlErr := url.Parse(URLString)
+	if urlErr != nil {
+		return nil, err
+	}
+
 	if u.Scheme != "ws" && u.Scheme != "wss" {
 		return nil, errors.New("url scheme was not websocket (ws nor wss)")
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/url"
 	"os"
 	"time"
 
@@ -141,14 +140,8 @@ func listen(logger *logrus.Logger, token string) {
 	// 	}
 	// }()
 
-	path := "wss://gateway.discord.gg/?v=8&encoding=json"
-	u, err := url.Parse(path)
-	if err != nil {
-		logger.Fatalf("invalid url string: %s", path)
-	}
-
 reconnect:
-	conn, err := shard.Dial(context.Background(), u)
+	conn, err := shard.Dial(context.Background(), "wss://gateway.discord.gg/?v=8&encoding=json")
 	if err != nil {
 		logger.Fatalf("failed to open websocket connection. %w", err)
 	}
