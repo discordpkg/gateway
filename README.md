@@ -33,10 +33,9 @@ Philosophy/requirements:
  - You're responsible for reading all incoming data
  - Sending gateway commands returns an error on failure
  - You only register for guild events by default (dm events must be stated explicitly)
- - context is supported when it makes sense, via ".WithContext(context.Context)"
+ - context support
  - desired events must be specified in the config, others are ignored (this allows for optimizations behind the scenes)
  - Control over reconnect, disconnect, or behavior for handling discord errors
- - cancellation
 
 ## Simple shard example 
 > This code uses github.com/gobwas/ws, but you are free to use other
