@@ -43,52 +43,51 @@ Philosophy/requirements:
 > websocket implementations as well. You just have to write your own Shard implmentation
 > and use GatewayState. See shard.go for inspiration.
 
-
+Here no handler is registered. Simply replace `nil` with a function pointer to read events (events with operation code 0). 
 ```go
-
-	shard, err := discordgateway.NewShard(nil, &discordgateway.ShardConfig{
-		BotToken:            token,
-		Events:              event.All(),
-		DMIntents:           intent.DirectMessageReactions | intent.DirectMessageTyping | intent.DirectMessages,
-		TotalNumberOfShards: 1,
-		IdentifyProperties: discordgateway.GatewayIdentifyProperties{
-			OS:      "linux",
-			Browser: "github.com/andersfylling/discordgateway v0",
-			Device:  "tester",
-		},
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+shard, err := discordgateway.NewShard(nil, &discordgateway.ShardConfig{
+    BotToken:            token,
+    Events:              event.All(),
+    DMIntents:           intent.DirectMessageReactions | intent.DirectMessageTyping | intent.DirectMessages,
+    TotalNumberOfShards: 1,
+    IdentifyProperties: discordgateway.GatewayIdentifyProperties{
+        OS:      "linux",
+        Browser: "github.com/andersfylling/discordgateway v0",
+        Device:  "tester",
+    },
+})
+if err != nil {
+    log.Fatal(err)
+}
 
 reconnect:
-    conn, err := shard.Dial(context.Background(), "wss://gateway.discord.gg/?v=8&encoding=json")
-	if err != nil {
-		logger.Fatalf("failed to open websocket connection. %w", err)
-	}
+conn, err := shard.Dial(context.Background(), "wss://gateway.discord.gg/?v=8&encoding=json")
+if err != nil {
+    logger.Fatalf("failed to open websocket connection. %w", err)
+}
 
 
-	if op, err := shard.EventLoop(context.Background(), conn); err != nil {
-        var discordErr *discordgateway.CloseError
-        if errors.As(err, &discordErr) {
-            switch discordErr.Code {
-            case 1001, 4000: // will initiate a resume
-                fallthrough
-            case 4007, 4009: // will do a fresh identify
-                goto reconnect
-            case 4001, 4002, 4003, 4004, 4005, 4008, 4010, 4011, 4012, 4013, 4014:
-            default:
-                logger.Errorf("unhandled close error, with discord op code(%d): %d", op, discordErr.Code)
-            }
-        }
-        var errClosed *discordgateway.ErrClosed
-        if errors.As(err, &errClosed) || errors.Is(err, net.ErrClosed) || errors.Is(err, io.ErrClosedPipe) {
-            logger.Debug("connection closed/lost .. will try to reconnect")
+if op, err := shard.EventLoop(context.Background(), conn); err != nil {
+    var discordErr *discordgateway.CloseError
+    if errors.As(err, &discordErr) {
+        switch discordErr.Code {
+        case 1001, 4000: // will initiate a resume
+            fallthrough
+        case 4007, 4009: // will do a fresh identify
             goto reconnect
+        case 4001, 4002, 4003, 4004, 4005, 4008, 4010, 4011, 4012, 4013, 4014:
+        default:
+            logger.Errorf("unhandled close error, with discord op code(%d): %d", op, discordErr.Code)
         }
-	} else {
-	    goto reconnect
-	}
+    }
+    var errClosed *discordgateway.ErrClosed
+    if errors.As(err, &errClosed) || errors.Is(err, net.ErrClosed) || errors.Is(err, io.ErrClosedPipe) {
+        logger.Debug("connection closed/lost .. will try to reconnect")
+        goto reconnect
+    }
+} else {
+    goto reconnect
+}
 ```
 
 ## Live bot for testing
