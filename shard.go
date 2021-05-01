@@ -111,6 +111,11 @@ func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn
 	return conn, nil
 }
 
+func (s *Shard) Writer(conn net.Conn) IOFlushWriter {
+	writer := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpText)
+	return writer
+}
+
 func writeClose(closer func(IOFlushWriter) error, conn net.Conn, reason string) error {
 	log.Info("shard sent close frame: ", reason)
 	closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)
@@ -137,7 +142,6 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 	life, kill := context.WithCancel(context.Background())
 	defer func() {
 		kill()
-		// cancel()
 	}()
 
 	closeConnection := func() {
@@ -152,9 +156,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 	}
 	defer closeConnection()
 
-	//sentReq := atomic.Bool{}
-
-	writer := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpText)
+	writer := s.Writer(conn)
 	controlHandler := wsutil.ControlFrameHandler(conn, ws.StateClientSide)
 	rd := wsutil.Reader{
 		Source:          conn,
@@ -196,6 +198,9 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 					default:
 						closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)
 						s.InvalidateSession(closeWriter)
+					}
+					if normalClose.Code == 1000 {
+						return opcode.Invalid, NormalCloseErr
 					}
 					return opcode.Invalid, &CloseError{Code: uint(normalClose.Code), Reason: normalClose.Reason}
 				} else {
@@ -267,7 +272,7 @@ type heart struct {
 	gotAck            atomic.Bool
 }
 
-func (h *heart) pulser(ctx context.Context, eventLoopCtx context.Context, writer *wsutil.Writer) {
+func (h *heart) pulser(ctx context.Context, eventLoopCtx context.Context, writer IOFlushWriter) {
 	// shard <-> pulser
 	ticker := time.NewTicker(h.interval)
 	defer ticker.Stop()

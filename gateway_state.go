@@ -14,6 +14,8 @@ import (
 	"github.com/andersfylling/discordgateway/opcode"
 )
 
+var NormalCloseErr = &CloseError{Code: 1000, Reason: "client is going away"}
+
 type CloseError struct {
 	Code   uint
 	Reason string
@@ -189,7 +191,7 @@ func (gs *GatewayState) InvalidateSession(closeWriter IOFlushCloseWriter) {
 		// TODO: so what?
 	}
 	gs.sessionID = ""
-	gs.state = nil
+	//gs.state = nil
 }
 
 func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, writer IOFlushWriter) (redundant bool, err error) {
