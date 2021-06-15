@@ -5,6 +5,7 @@ package event
 
 import "fmt"
 import "errors"
+import "strings"
 import "math/bits"
 
 type UnsupportedErr struct {
@@ -22,13 +23,14 @@ func (f Flag) Size() int {
 	return bits.OnesCount64(uint64(f))
 }
 
-// String discord string value for event. Panics if flag is not a singular event
+// String discord string value for event. When multiple, the events are joined with | as a separator
+// panics if no flags are defined
 func (f Flag) String() string {
-	str, err := String(f)
+	strs, err := Strings(f)
 	if err != nil {
 		panic(err)
 	}
-	return str
+	return strings.Join(strs, "|")
 }
 
 // list off all 52 discord events
