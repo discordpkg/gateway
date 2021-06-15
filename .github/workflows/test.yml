@@ -24,7 +24,7 @@ jobs:
       - name: Format Test
         run: diff <(gofmt -d ./...) <(echo -n)
       - name: unit tests
-        run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+        run: go test -short -v -race -coverprofile=coverage.txt -covermode=atomic ./...
       - name: Codecov
         run: bash <(curl -s https://codecov.io/bash) -t ${{secrets.CODECOV_TOKEN}} -B master -c -F unit -f "./coverage.txt" -Z
 
