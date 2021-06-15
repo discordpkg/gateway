@@ -66,11 +66,11 @@ func singularIntentToEventFlags(i Flag) (flags event.Flag) {
 	case GuildEmojis:
 		flags = event.GuildEmojisUpdate
 	case GuildIntegrations:
-		flags = event.GuildIntegrationsUpdate
+		flags = event.GuildIntegrationsUpdate | event.IntegrationCreate | event.IntegrationUpdate | event.IntegrationDelete
 	case GuildInvites:
 		flags = event.InviteCreate | event.InviteDelete
 	case GuildMembers:
-		flags = event.GuildMemberCreate | event.GuildMemberUpdate | event.GuildMemberDelete
+		flags = event.GuildMemberCreate | event.GuildMemberUpdate | event.GuildMemberDelete | event.ThreadMembersUpdate
 	case GuildMessageReactions:
 		flags = event.MessageReactionCreate | event.MessageReactionDelete | event.MessageReactionDeleteAll | event.MessageReactionDeleteEmoji
 	case GuildMessageTyping:
@@ -84,7 +84,7 @@ func singularIntentToEventFlags(i Flag) (flags event.Flag) {
 	case GuildWebhooks:
 		flags = event.WebhooksUpdate
 	case Guilds:
-		flags = event.GuildCreate | event.GuildUpdate | event.GuildDelete | event.GuildRoleCreate | event.GuildRoleUpdate | event.GuildRoleDelete | event.ChannelCreate | event.ChannelUpdate | event.ChannelDelete | event.ChannelPinsUpdate
+		flags = event.GuildCreate | event.GuildUpdate | event.GuildDelete | event.GuildRoleCreate | event.GuildRoleUpdate | event.GuildRoleDelete | event.ChannelCreate | event.ChannelUpdate | event.ChannelDelete | event.ChannelPinsUpdate | event.ThreadCreate | event.ThreadUpdate | event.ThreadDelete | event.ThreadListSync | event.ThreadMemberUpdate | event.ThreadMembersUpdate
 	}
 	return flags
 }

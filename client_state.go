@@ -71,13 +71,11 @@ func (c *clientState) WriteRestartClose(client IOFlushCloseWriter) error {
 func (c *clientState) writeClose(client IOFlushWriter, code uint16) error {
 	writeIfOpen := func() error {
 		if c.stateClosed.CAS(false, true) {
-			// there is no real benefit to give Discord a reason.
-			// relevant errors should instead be logged for diagnostic purposes.
 			closeCodeBuf := make([]byte, 2)
 			binary.BigEndian.PutUint16(closeCodeBuf, code)
 
 			if _, err := client.Write(closeCodeBuf); err != nil {
-				return fmt.Errorf("unable to write close code to Discord. %w", err)
+				return fmt.Errorf("unable to write close code to buffer. %w", err)
 			}
 			return client.Flush()
 		}

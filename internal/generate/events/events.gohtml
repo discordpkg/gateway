@@ -22,6 +22,7 @@ func (f Flag) Size() int {
     return bits.OnesCount64(uint64(f))
 }
 
+// list off all {{ len . }} discord events
 const (
     _ Flag = 0b1 << iota
 

@@ -49,6 +49,13 @@ func (e errorHook) Fire(entry *logrus.Entry) error {
 
 func main() {
 	logger := logrus.New()
+	logger.SetLevel(logrus.DebugLevel)
+	logger.SetFormatter(&logrus.TextFormatter{
+		ForceColors:      true,
+		DisableTimestamp: false,
+		FullTimestamp:    true,
+		TimestampFormat:  "",
+	})
 	log.LogInstance = logger
 
 	token := os.Getenv(EnvDiscordToken)
@@ -83,14 +90,6 @@ type DiscordEvent struct {
 func listen(logger *logrus.Logger, token string) {
 	logger.Warn("STARTED")
 
-	logger.SetLevel(logrus.DebugLevel)
-	logger.SetFormatter(&logrus.TextFormatter{
-		ForceColors:      true,
-		DisableTimestamp: false,
-		FullTimestamp:    true,
-		TimestampFormat:  "",
-	})
-
 	shard, err := discordgateway.NewShard(nil, &discordgateway.ShardConfig{
 		BotToken:            token,
 		Events:              event.All(),
@@ -119,13 +118,13 @@ reconnect:
 			switch discordErr.Code {
 			case 1001, 4000:
 				logger.Debug("creating resume client")
-				if !shard.HaveSessionID() {
+				if !shard.State.HaveSessionID() {
 					logger.Fatal("expected session id to exist")
 				}
 				goto reconnect
 			case 4007, 4009:
 				logger.Debug("forcing new identify")
-				if shard.HaveSessionID() {
+				if shard.State.HaveSessionID() {
 					logger.Fatal("expected session id to not exist")
 				}
 				goto reconnect
@@ -137,7 +136,7 @@ reconnect:
 		var errClosed *discordgateway.ErrClosed
 		if errors.As(err, &errClosed) || errors.Is(err, net.ErrClosed) || errors.Is(err, io.ErrClosedPipe) {
 			logger.Debug("errClosed - creating resume client")
-			if !shard.HaveSessionID() {
+			if !shard.State.HaveSessionID() {
 				logger.Fatal("expected session id to exist")
 			}
 			goto reconnect
@@ -147,12 +146,12 @@ reconnect:
 		logger.Infof("event loop exited with op code: %s", op)
 		switch op {
 		case opcode.EventReconnect:
-			if !shard.HaveSessionID() {
+			if !shard.State.HaveSessionID() {
 				logger.Fatal("expected session id to exist")
 			}
 			goto reconnect
 		case opcode.EventInvalidSession:
-			if shard.HaveSessionID() {
+			if shard.State.HaveSessionID() {
 				logger.Fatal("expected session id to not exist")
 			}
 			goto reconnect

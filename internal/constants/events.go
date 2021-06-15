@@ -1,79 +1,76 @@
 package constants
 
-// Ready The ready event is dispatched when a client has completed the initial handshake with the gateway (for new sessions).
-// The ready event can be the largest and most complex event the gateway will send, as it contains all the state
-// required for a client to begin interacting with the rest of the platform.
+// Hello defines the heartbeat interval
+const Hello = "HELLO"
+
+// Ready contains the initial state information
 const Ready = "READY"
 
-// Resumed The resumed event is dispatched when a client has sent a resume payload to the gateway
-// (for resuming existing sessions).
+// Resumed response to Resume
 const Resumed = "RESUMED"
 
-// ChannelCreate Sent when a new channel is created, relevant to the current user. The inner payload is a DM channel or
-// guild channel object.
+// Reconnect server is going away, client should reconnect to gateway and resume
+const Reconnect = "RECONNECT"
+
+// InvalidSession failure response to Identify or Resume or invalid active session
+const InvalidSession = "INVALID_SESSION"
+
+// ApplicationCommandCreate new Slash Command was created
+const ApplicationCommandCreate = "APPLICATION_COMMAND_CREATE"
+
+// ApplicationCommandUpdate Slash Command was updated
+const ApplicationCommandUpdate = "APPLICATION_COMMAND_UPDATE"
+
+// ApplicationCommandDelete Slash Command was deleted
+const ApplicationCommandDelete = "APPLICATION_COMMAND_DELETE"
+
+// ChannelCreate new guild channel created
 const ChannelCreate = "CHANNEL_CREATE"
 
-// ChannelUpdate Sent when a channel is updated. The inner payload is a guild channel object.
+// ChannelUpdate channel was updated
 const ChannelUpdate = "CHANNEL_UPDATE"
 
-// ChannelDelete Sent when a channel relevant to the current user is deleted. The inner payload is a DM or Guild channel object.
+// ChannelDelete channel was deleted
 const ChannelDelete = "CHANNEL_DELETE"
 
 // ChannelPinsUpdate Sent when a message is pinned or unpinned in a text channel. This is not sent when a pinned message is deleted.
 const ChannelPinsUpdate = "CHANNEL_PINS_UPDATE"
 
-// TypingStart Sent when a user starts typing in a channel.
-const TypingStart = "TYPING_START"
+// ThreadCreate thread created, also sent when being added to a private thread
+const ThreadCreate = "THREAD_CREATE"
 
-// InviteDelete Sent when an invite is deleted.
-const InviteDelete = "INVITE_DELETE"
+// ThreadUpdate thread was updated
+const ThreadUpdate = "THREAD_UPDATE"
 
-// MessageCreate Sent when a message is created. The inner payload is a message object.
-const MessageCreate = "MESSAGE_CREATE"
+// ThreadDelete thread was deleted
+const ThreadDelete = "THREAD_DELETE"
 
-// MessageUpdate Sent when a message is updated. The inner payload is a message object.
-//
-// NOTE! Has _at_least_ the GuildID and ChannelID fields.
-const MessageUpdate = "MESSAGE_UPDATE"
+// ThreadListSync sent when gaining access to a channel, contains all active threads in that channel
+const ThreadListSync = "THREAD_LIST_SYNC"
 
-// MessageDelete Sent when a message is deleted.
-const MessageDelete = "MESSAGE_DELETE"
+// ThreadMemberUpdate thread member for the current user was updated
+const ThreadMemberUpdate = "THREAD_MEMBER_UPDATE"
 
-// MessageDeleteBulk Sent when multiple messages are deleted at once.
-const MessageDeleteBulk = "MESSAGE_DELETE_BULK"
+// ThreadMembersUpdate some user(s) were added to or removed from a thread
+const ThreadMembersUpdate = "THREAD_MEMBERS_UPDATE"
 
-// MessageReactionCreate Sent when a user adds a reaction to a message.
-const MessageReactionCreate = "MESSAGE_REACTION_ADD"
-
-// MessageReactionDelete Sent when a user removes a reaction from a message.
-const MessageReactionDelete = "MESSAGE_REACTION_REMOVE"
-
-// MessageReactionDeleteAll Sent when a user explicitly removes all reactions from a message.
-const MessageReactionDeleteAll = "MESSAGE_REACTION_REMOVE_ALL"
-
-// GuildEmojisUpdate Sent when a guild's emojis have been updated.
-const GuildEmojisUpdate = "GUILD_EMOJIS_UPDATE"
-
-// GuildCreate This event can be sent in three different scenarios:
-//  1. When a user is initially connecting, to lazily load and backfill information for all unavailable guilds
-//     sent in the Ready event.
-//	2. When a Guild becomes available again to the client.
-// 	3. When the current user joins a new Guild.
+// GuildCreate lazy-load for unavailable guild, guild became available, or user joined a new guild
 const GuildCreate = "GUILD_CREATE"
 
-// GuildUpdate Sent when a guild is updated. The inner payload is a guild object.
+// GuildUpdate guild was updated
 const GuildUpdate = "GUILD_UPDATE"
 
-// GuildDelete Sent when a guild becomes unavailable during a guild outage, or when the user leaves or is removed from a guild.
-// The inner payload is an unavailable guild object. If the unavailable field is not set, the user was removed
-// from the guild.
+// GuildDelete guild became unavailable, or user left/was removed from a guild
 const GuildDelete = "GUILD_DELETE"
 
-// GuildBanCreate Sent when a user is banned from a guild. The inner payload is a user object, with an extra guild_id key.
+// GuildBanCreate user was banned from a guild
 const GuildBanCreate = "GUILD_BAN_ADD"
 
-// GuildBanDelete Sent when a user is unbanned from a guild. The inner payload is a user object, with an extra guild_id key.
+// GuildBanDelete user was unbanned from a guild
 const GuildBanDelete = "GUILD_BAN_REMOVE"
+
+// GuildEmojisUpdate guild emojis were updated
+const GuildEmojisUpdate = "GUILD_EMOJIS_UPDATE"
 
 // GuildIntegrationsUpdate Sent when a guild integration is updated.
 const GuildIntegrationsUpdate = "GUILD_INTEGRATIONS_UPDATE"
@@ -99,27 +96,62 @@ const GuildRoleUpdate = "GUILD_ROLE_UPDATE"
 // GuildRoleDelete Sent when a guild role is created.
 const GuildRoleDelete = "GUILD_ROLE_DELETE"
 
-// PresenceUpdate A user's presence is their current state on a guild. This event is sent when a user's presence is updated for a guild.
-const PresenceUpdate = "PRESENCE_UPDATE"
+// IntegrationCreate guild integration was created
+const IntegrationCreate = "INTEGRATION_CREATE"
 
-// UserUpdate Sent when properties about the user change. Inner payload is a user object.
-const UserUpdate = "USER_UPDATE"
+// IntegrationUpdate guild integration was updated
+const IntegrationUpdate = "INTEGRATION_UPDATE"
 
-// VoiceStateUpdate Sent when someone joins/leaves/moves voice channels. Inner payload is a voice state object.
-const VoiceStateUpdate = "VOICE_STATE_UPDATE"
+// IntegrationDelete guild integration was deleted
+const IntegrationDelete = "INTEGRATION_DELETE"
 
-// VoiceServerUpdate Sent when a guild's voice server is updated. This is sent when initially connecting to voice, and when the current
-// voice instance fails over to a new server.
-const VoiceServerUpdate = "VOICE_SERVER_UPDATE"
+// InteractionCreate user used an interaction, such as a Slash Command
+const InteractionCreate = "INTERACTION_CREATE"
 
-// WebhooksUpdate Sent when a guild channel's WebHook is created, updated, or deleted.
-const WebhooksUpdate = "WEBHOOKS_UPDATE"
-
-// InviteCreate Sent when a guild's invite is created.
+// InviteCreate	invite to a channel was created
 const InviteCreate = "INVITE_CREATE"
 
-// MessageReactionDeleteEmoji Sent when a bot removes all instances of a given emoji from the reactions of a message.
+// InviteDelete	invite to a channel was deleted
+const InviteDelete = "INVITE_DELETE"
+
+// MessageCreate message was created
+const MessageCreate = "MESSAGE_CREATE"
+
+// MessageUpdate message was edited
+const MessageUpdate = "MESSAGE_UPDATE"
+
+// MessageDelete message was deleted
+const MessageDelete = "MESSAGE_DELETE"
+
+// MessageDeleteBulk multiple messages were deleted at once
+const MessageDeleteBulk = "MESSAGE_DELETE_BULK"
+
+// MessageReactionCreate user reacted to a message
+const MessageReactionCreate = "MESSAGE_REACTION_ADD"
+
+// MessageReactionDelete user removed a reaction from a message
+const MessageReactionDelete = "MESSAGE_REACTION_REMOVE"
+
+// MessageReactionDeleteAll all reactions were explicitly removed from a message
+const MessageReactionDeleteAll = "MESSAGE_REACTION_REMOVE_ALL"
+
+// MessageReactionDeleteEmoji all reactions for a given emoji were explicitly removed from a message
 const MessageReactionDeleteEmoji = "MESSAGE_REACTION_REMOVE_EMOJI"
 
-// InteractionCreate Sent when a user in a guild uses a Slash Command. Inner payload is an Interaction.
-const InteractionCreate = "INTERACTION_CREATE"
+// PresenceUpdate user was updated
+const PresenceUpdate = "PRESENCE_UPDATE"
+
+// TypingStart user started typing in a channel
+const TypingStart = "TYPING_START"
+
+// UserUpdate properties about the user changed
+const UserUpdate = "USER_UPDATE"
+
+// VoiceStateUpdate someone joined, left, or moved a voice channel
+const VoiceStateUpdate = "VOICE_STATE_UPDATE"
+
+// VoiceServerUpdate guild's voice server was updated
+const VoiceServerUpdate = "VOICE_SERVER_UPDATE"
+
+// WebhooksUpdate guild channel webhook was created, update, or deleted
+const WebhooksUpdate = "WEBHOOKS_UPDATE"

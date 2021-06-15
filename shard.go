@@ -68,7 +68,7 @@ func NewShard(handler func(event.Flag, []byte), conf *ShardConfig) (*Shard, erro
 }
 
 type Shard struct {
-	*GatewayState
+	State     *GatewayState
 	whitelist event.Flag
 	handler   func(event.Flag, []byte)
 }
@@ -128,14 +128,14 @@ func writeClose(closer func(IOFlushWriter) error, conn net.Conn, reason string) 
 
 func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, error) {
 	defer func() {
-		if s.HaveSessionID() {
-			s.GatewayState = &GatewayState{
-				conf:      s.GatewayState.conf,
-				state:     newStateWithSeqNumber(s.SequenceNumber()),
-				sessionID: s.GatewayState.sessionID,
+		if s.State.HaveSessionID() {
+			s.State = &GatewayState{
+				conf:      s.State.conf,
+				state:     newStateWithSeqNumber(s.State.SequenceNumber()),
+				sessionID: s.State.sessionID,
 			}
 		} else {
-			s.GatewayState = NewGatewayClient(&s.GatewayState.conf)
+			s.State = NewGatewayClient(&s.State.conf)
 		}
 	}()
 
@@ -145,11 +145,11 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 	}()
 
 	closeConnection := func() {
-		if s.Closed() {
+		if s.State.Closed() {
 			return
 		}
 
-		if err := writeClose(s.GatewayState.WriteRestartClose, conn, "program shutdown"); err != nil {
+		if err := writeClose(s.State.WriteRestartClose, conn, "program shutdown"); err != nil {
 			log.Error("failed to close connection properly: ", err)
 		}
 		_ = conn.Close()
@@ -197,7 +197,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 					case 1001, 4000: // allow resume
 					default:
 						closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)
-						s.InvalidateSession(closeWriter)
+						s.State.InvalidateSession(closeWriter)
 					}
 					if normalClose.Code == 1000 {
 						return opcode.Invalid, NormalCloseErr
@@ -217,7 +217,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 			continue
 		}
 
-		payload, length, err := s.Read(&rd)
+		payload, length, err := s.State.Read(&rd)
 		if err != nil {
 			return opcode.Invalid, fmt.Errorf("unable to call shard read successfully: %w", err)
 		}
@@ -225,7 +225,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 			return opcode.Invalid, errors.New("no data was actually read. Byte slice payload had a length of 0")
 		}
 
-		redundant, err := s.DemultiplexEvent(payload, writer)
+		redundant, err := s.State.DemultiplexEvent(payload, writer)
 		if redundant {
 			continue
 		}
@@ -240,7 +240,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 			}
 		case opcode.EventInvalidSession:
 			closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)
-			s.InvalidateSession(closeWriter)
+			s.State.InvalidateSession(closeWriter)
 			return payload.Op, nil
 		case opcode.EventHello:
 			var hello *GatewayHello
@@ -251,7 +251,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 			pulser.gotAck.Store(true)
 			pulser.interval = time.Duration(hello.HeartbeatIntervalMilli) * time.Millisecond
 			pulser.conn = conn
-			pulser.shard = s.GatewayState
+			pulser.shard = s.State
 			pulser.forcedReadTimeout = &forcedReadTimeout
 
 			go pulser.pulser(ctx, life, writer)

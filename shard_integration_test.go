@@ -17,7 +17,7 @@ func TestShard(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second * 10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	token := os.Getenv("DISCORD_TOKEN")

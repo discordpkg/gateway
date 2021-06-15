@@ -31,13 +31,15 @@ type relation struct {
 var Guilds = relation{
 	Events: event.GuildCreate | event.GuildUpdate | event.GuildDelete |
 		event.GuildRoleCreate | event.GuildRoleUpdate | event.GuildRoleDelete |
-		event.ChannelCreate | event.ChannelUpdate | event.ChannelDelete |
-		event.ChannelPinsUpdate,
+		event.ChannelCreate | event.ChannelUpdate | event.ChannelDelete | event.ChannelPinsUpdate |
+		event.ThreadCreate | event.ThreadUpdate | event.ThreadDelete | event.ThreadListSync |
+		event.ThreadMemberUpdate | event.ThreadMembersUpdate,
 	Intent: guilds,
 }
 
 var GuildMembers = relation{
-	Events: event.GuildMemberCreate | event.GuildMemberUpdate | event.GuildMemberDelete,
+	Events: event.GuildMemberCreate | event.GuildMemberUpdate | event.GuildMemberDelete |
+		event.ThreadMembersUpdate,
 	Intent: guildMembers,
 }
 
@@ -52,7 +54,8 @@ var GuildEmojis = relation{
 }
 
 var GuildIntegrations = relation{
-	Events: event.GuildIntegrationsUpdate,
+	Events: event.GuildIntegrationsUpdate |
+		event.IntegrationCreate | event.IntegrationUpdate | event.IntegrationDelete,
 	Intent: guildIntegrations,
 }
 

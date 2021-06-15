@@ -109,5 +109,6 @@ func (e eventInfo) RenderDocs() string {
 		return ""
 	}
 
-	return strings.Replace(e.Docs, "\n", "\n// ", -1)
+	str := strings.Replace(e.Docs, "\n", "\n// ", -1)
+	return str[:len(str)-4]
 }

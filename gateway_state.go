@@ -25,36 +25,6 @@ func (c *CloseError) Error() string {
 	return fmt.Sprintf("%d: %s", c.Code, c.Reason)
 }
 
-type GatewayHello struct {
-	HeartbeatIntervalMilli int64 `json:"heartbeat_interval"`
-}
-
-type GatewayReady struct {
-	SessionID string `json:"session_id"`
-}
-
-type GatewayResume struct {
-	BotToken       string `json:"token"`
-	SessionID      string `json:"session_id"`
-	SequenceNumber int64  `json:"seq"`
-}
-
-type GatewayIdentifyProperties struct {
-	OS      string `json:"$os"`
-	Browser string `json:"$browser"`
-	Device  string `json:"$device"`
-}
-
-type GatewayIdentify struct {
-	BotToken       string      `json:"token"`
-	Properties     interface{} `json:"properties"`
-	Compress       bool        `json:"compress,omitempty"`
-	LargeThreshold uint8       `json:"large_threshold,omitempty"`
-	Shard          [2]uint     `json:"shard"`
-	Presence       interface{} `json:"presence"`
-	Intents        intent.Flag `json:"intents"`
-}
-
 func NewGatewayClient(conf *GatewayStateConfig) *GatewayState {
 	return &GatewayState{
 		conf:  *conf,
@@ -213,6 +183,7 @@ func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, writer IOFlush
 				return false, fmt.Errorf("identify failed. closing. %w", err)
 			}
 		}
+		return false, nil
 	case opcode.EventDispatch, opcode.EventHeartbeatACK, opcode.EventInvalidSession, opcode.EventReconnect:
 		return false, nil
 	default:
