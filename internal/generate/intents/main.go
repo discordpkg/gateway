@@ -41,7 +41,7 @@ func main() {
 		intents = append(intents, &intentInfo{
 			Name:   name,
 			Intent: fmt.Sprint(intent),
-			Events: strings.Join(events, " | "),
+			Events: fmt.Sprintf("[]event.Type{%s}", strings.Join(events, ",")),
 		})
 	}
 
@@ -65,15 +65,10 @@ func unwrapEvents(evts interface{}) (names []string) {
 		return names
 	}
 
-	binExpr := evts.(*ast.BinaryExpr)
-	if next, ok := binExpr.X.(*ast.BinaryExpr); ok {
-		names = append(names, unwrapEvents(next)...)
-	}
-	if sel, ok := binExpr.X.(*ast.SelectorExpr); ok {
-		names = append(names, decodeSelectorExpr(sel))
-	}
-	if sel, ok := binExpr.Y.(*ast.SelectorExpr); ok {
-		names = append(names, decodeSelectorExpr(sel))
+	comps := evts.(*ast.CompositeLit)
+	for i := range comps.Elts {
+		elt := comps.Elts[i].(*ast.SelectorExpr)
+		names = append(names, elt.X.(*ast.Ident).Name+"."+elt.Sel.Name)
 	}
 
 	return names

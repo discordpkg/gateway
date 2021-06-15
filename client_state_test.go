@@ -184,13 +184,9 @@ func TestClientState(t *testing.T) {
 			}
 
 			evt := event.MessageCreate
-			evtstr, err := event.String(evt)
-			if err != nil {
-				t.Fatal("failed to parse event to string", err)
-			}
 
 			// write the data to pipe
-			str := fmt.Sprintf(`{"op":0,"d":{"random":"data"},"t":"%s"}`, evtstr)
+			str := fmt.Sprintf(`{"op":0,"d":{"random":"data"},"t":"%s"}`, evt)
 			mock.readChan <- []byte(str)
 
 			payload, _, err := client.Read(mock)
@@ -198,11 +194,8 @@ func TestClientState(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if payload.EventFlag != evt {
-				t.Errorf("incorrect event flag. Got %d, wants %d", payload.EventFlag, evt)
-			}
-			if payload.EventName != evtstr {
-				t.Errorf("incorrect event name. Got %s, wants %s", payload.EventName, evtstr)
+			if payload.EventName != evt {
+				t.Errorf("incorrect event name. Got %s, wants %s", payload.EventName, evt)
 			}
 		})
 		t.Run("invalid-data", func(t *testing.T) {

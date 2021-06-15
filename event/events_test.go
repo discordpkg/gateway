@@ -5,17 +5,6 @@ import (
 	"testing"
 )
 
-func TestEventToString(t *testing.T) {
-	gv, err := String(Ready)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if gv != readyString {
-		t.Error("Ready is not converted to it's string value")
-	}
-}
-
 func getSize() int {
 	return 1750035 + 0
 }

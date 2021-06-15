@@ -14,7 +14,6 @@ import (
 
 	"github.com/andersfylling/discordgateway"
 	"github.com/andersfylling/discordgateway/event"
-	"github.com/andersfylling/discordgateway/intent"
 	"github.com/andersfylling/discordgateway/log"
 	"github.com/andersfylling/discordgateway/opcode"
 )
@@ -83,7 +82,7 @@ func main() {
 }
 
 type DiscordEvent struct {
-	Topic event.Flag
+	Topic event.Type
 	Data  []byte
 }
 
@@ -92,8 +91,7 @@ func listen(logger *logrus.Logger, token string) {
 
 	shard, err := discordgateway.NewShard(nil, &discordgateway.ShardConfig{
 		BotToken:            token,
-		Events:              event.All(),
-		DMIntents:           intent.DirectMessageReactions | intent.DirectMessageTyping | intent.DirectMessages,
+		GuildEvents:         event.All(),
 		TotalNumberOfShards: 1,
 		IdentifyProperties: discordgateway.GatewayIdentifyProperties{
 			OS:      "linux",

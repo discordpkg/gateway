@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/andersfylling/discordgateway/intent"
 	"net"
 	"strconv"
 	"testing"
@@ -47,7 +48,7 @@ func TestGatewayState_Read(t *testing.T) {
 	t.Run("ready", func(t *testing.T) {
 		t.Run("stores-session-id", func(t *testing.T) {
 			sessionID := "lfhaiskge5uvrievuh"
-			payloadStr := fmt.Sprintf(`{"op":0,"d":{"session_id":"%s"},"t":"%s"}`, sessionID, event.Ready.String())
+			payloadStr := fmt.Sprintf(`{"op":0,"d":{"session_id":"%s"},"t":"%s"}`, sessionID, event.Ready)
 			payload := []byte(payloadStr)
 
 			if client.sessionID != "" {
@@ -66,7 +67,7 @@ func TestGatewayState_Read(t *testing.T) {
 
 		t.Run("require-session-id", func(t *testing.T) {
 			// inject invalid json data, and expect the read to fail cause session id could not be extracted
-			payloadStr := fmt.Sprintf(`{"op":0,"d":{"unknown_id":"skerugcrug"},"t":"%s"}`, event.Ready.String())
+			payloadStr := fmt.Sprintf(`{"op":0,"d":{"unknown_id":"skerugcrug"},"t":"%s"}`, event.Ready)
 			payload := []byte(payloadStr)
 
 			reader := bytes.NewReader(payload)
@@ -110,7 +111,7 @@ func TestGatewayState_Identify(t *testing.T) {
 		client := NewGatewayState()
 		client.conf = GatewayStateConfig{
 			BotToken:            "kaicyeurtbecgresn",
-			Intents:             1,
+			GuildEvents:         intent.Guilds.Events(),
 			ShardID:             0,
 			TotalNumberOfShards: 1,
 		}
@@ -149,7 +150,7 @@ func TestGatewayState_Identify(t *testing.T) {
 		if client.conf.TotalNumberOfShards > 0 && client.conf.TotalNumberOfShards != identify.Shard[1] {
 			incorrect("ShardCount", identify.Shard[1], client.conf.TotalNumberOfShards)
 		}
-		if client.conf.Intents != identify.Intents {
+		if client.intents != identify.Intents {
 			incorrect("Intents", identify.Intents, client.conf.Intents)
 		}
 	})
@@ -170,7 +171,7 @@ func TestGatewayState_Resume(t *testing.T) {
 		client := NewGatewayState()
 		client.conf = GatewayStateConfig{
 			BotToken:            "kaicyeurtbecgresn",
-			Intents:             1,
+			GuildEvents:         intent.Guilds.Events(),
 			ShardID:             0,
 			TotalNumberOfShards: 1,
 		}

@@ -25,19 +25,51 @@ func (c *CloseError) Error() string {
 	return fmt.Sprintf("%d: %s", c.Code, c.Reason)
 }
 
+var emptyStruct struct{}
+
 func NewGatewayClient(conf *GatewayStateConfig) *GatewayState {
-	return &GatewayState{
-		conf:  *conf,
-		state: newState(),
+	gs := &GatewayState{
+		conf:      *conf,
+		state:     newState(),
+		whitelist: make(map[event.Type]struct{}),
 	}
+
+	// derive intents
+	gs.intents = intent.Merge(conf.Intents()...)
+
+	// whitelist events
+	for _, evt := range conf.DMEvents {
+		gs.whitelist[evt] = emptyStruct
+	}
+	for _, evt := range conf.GuildEvents {
+		gs.whitelist[evt] = emptyStruct
+	}
+
+	return gs
 }
 
 type GatewayStateConfig struct {
 	BotToken            string
-	Intents             intent.Flag
 	ShardID             uint
 	TotalNumberOfShards uint
 	Properties          GatewayIdentifyProperties
+	GuildEvents         []event.Type
+	DMEvents            []event.Type
+}
+
+func (gsc *GatewayStateConfig) Intents() (intents []intent.Type) {
+	intentsMap := make(map[intent.Type]struct{})
+	for _, i := range intent.DMEventsToIntents(gsc.DMEvents) {
+		intentsMap[i] = emptyStruct
+	}
+	for _, i := range intent.GuildEventsToIntents(gsc.GuildEvents) {
+		intentsMap[i] = emptyStruct
+	}
+
+	for i := range intentsMap {
+		intents = append(intents, i)
+	}
+	return intents
 }
 
 // GatewayState should be discarded after the connection has closed.
@@ -49,6 +81,10 @@ type GatewayState struct {
 	//  interface is used to ensure validity, and avoid write dependencies.
 	//  The idea is that state can be re-used in a future voice implementation as well
 
+	// events that are not found in the whitelist are viewed as redundant and are
+	// skipped / ignored
+	whitelist            map[event.Type]struct{}
+	intents              intent.Type
 	sessionID            string
 	sentResumeOrIdentify atomic.Bool
 }
@@ -82,7 +118,7 @@ func (gs *GatewayState) Read(client IOReader) (*GatewayPayload, int, error) {
 		return nil, 0, err
 	}
 
-	if payload.EventFlag == event.Ready {
+	if payload.EventName == event.Ready {
 		// need to store session ID for resume
 		ready := GatewayReady{}
 		if err := json.Unmarshal(payload.Data, &ready); err != nil || ready.SessionID == "" {
@@ -109,7 +145,7 @@ func (gs *GatewayState) Identify(client IOFlushWriter) error {
 		LargeThreshold: 0,
 		Shard:          [2]uint{gs.conf.ShardID, gs.conf.TotalNumberOfShards},
 		Presence:       nil,
-		Intents:        gs.conf.Intents,
+		Intents:        gs.intents,
 	}
 
 	data, err := json.Marshal(identifyPacket)
@@ -184,7 +220,11 @@ func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, writer IOFlush
 			}
 		}
 		return false, nil
-	case opcode.EventDispatch, opcode.EventHeartbeatACK, opcode.EventInvalidSession, opcode.EventReconnect:
+	case opcode.EventDispatch:
+		if _, whitelisted := gs.whitelist[payload.EventName]; whitelisted {
+			return false, nil
+		}
+	case opcode.EventHeartbeatACK, opcode.EventInvalidSession, opcode.EventReconnect:
 		return false, nil
 	default:
 		// TODO: log new unhandled operation code

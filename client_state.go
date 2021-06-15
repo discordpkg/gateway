@@ -21,8 +21,7 @@ type GatewayPayload struct {
 	Op        opcode.OpCode   `json:"op"`
 	Data      json.RawMessage `json:"d"`
 	Seq       int64           `json:"s,omitempty"`
-	EventName string          `json:"t,omitempty"`
-	EventFlag event.Flag      `json:"-"`
+	EventName event.Type      `json:"t,omitempty"`
 	Outdated  bool            `json:"-"`
 }
 
@@ -105,13 +104,6 @@ func (c *clientState) Read(client IOReader) (*GatewayPayload, int, error) {
 	packet := &GatewayPayload{}
 	if err = json.Unmarshal(data, packet); err != nil {
 		return nil, 0, fmt.Errorf("failed to unmarshal packet. %w", err)
-	}
-
-	// set event flags
-	if packet.Op == opcode.EventDispatch {
-		if packet.EventFlag, err = event.StringToEvent(packet.EventName); err != nil {
-			log.Error(fmt.Sprintf("event flag for event name %s does not exist", packet.EventName))
-		}
 	}
 
 	prevSeq := c.sequenceNumber.Load()

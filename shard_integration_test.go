@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/andersfylling/discordgateway/event"
-	"github.com/andersfylling/discordgateway/intent"
 )
 
 func TestShard(t *testing.T) {
@@ -25,15 +24,15 @@ func TestShard(t *testing.T) {
 		t.Fatal("missing token")
 	}
 
-	var recordedEvents event.Flag
-	recordEvent := func(evt event.Flag, _ []byte) {
-		recordedEvents |= evt
+	recordedEvents := make(map[event.Type]struct{})
+	recordEvent := func(evt event.Type, _ []byte) {
+		recordedEvents[evt] = struct{}{}
 	}
 
 	shard, err := NewShard(recordEvent, &ShardConfig{
 		BotToken:            token,
-		Events:              event.All(),
-		DMIntents:           intent.DirectMessageReactions | intent.DirectMessageTyping | intent.DirectMessages,
+		GuildEvents:         event.All(),
+		DMEvents:            event.All(),
 		TotalNumberOfShards: 1,
 		IdentifyProperties: GatewayIdentifyProperties{
 			OS:      "linux",

@@ -4,149 +4,114 @@ package intent
 // Warning: This file is overwritten at "go generate", instead adapt internal/constants/events.go and run go generate
 
 import (
-	"errors"
-	"math/bits"
-
 	"github.com/andersfylling/discordgateway/event"
 	"github.com/andersfylling/discordgateway/internal/constants"
 )
 
-type Flag constants.Intent
+type Type constants.Intent
 
-func (i Flag) Size() int {
-	return bits.OnesCount64(uint64(i))
-}
-
-func (i Flag) EventFlags() (flags event.Flag) {
-	if i.Size() == 0 {
-		return 0
-	}
-	if i.Size() == 1 {
-		return singularIntentToEventFlags(i)
-	}
-
-	for in := Flag(1); in < All(); in = in << 1 {
-		if (in & i) == 0 {
-			continue
-		}
-
-		flags |= singularIntentToEventFlags(in)
-	}
-	return flags
+func (i Type) Events() []event.Type {
+	return Events(i)
 }
 
 const (
-	DirectMessageReactions Flag = 13
-	DirectMessageTyping    Flag = 14
-	DirectMessages         Flag = 12
-	GuildBans              Flag = 2
-	GuildEmojis            Flag = 3
-	GuildIntegrations      Flag = 4
-	GuildInvites           Flag = 6
-	GuildMembers           Flag = 1
-	GuildMessageReactions  Flag = 10
-	GuildMessageTyping     Flag = 11
-	GuildMessages          Flag = 9
-	GuildPresences         Flag = 8
-	GuildVoiceStates       Flag = 7
-	GuildWebhooks          Flag = 5
-	Guilds                 Flag = 0
+	DirectMessageReactions Type = 13
+	DirectMessageTyping    Type = 14
+	DirectMessages         Type = 12
+	GuildBans              Type = 2
+	GuildEmojis            Type = 3
+	GuildIntegrations      Type = 4
+	GuildInvites           Type = 6
+	GuildMembers           Type = 1
+	GuildMessageReactions  Type = 10
+	GuildMessageTyping     Type = 11
+	GuildMessages          Type = 9
+	GuildPresences         Type = 8
+	GuildVoiceStates       Type = 7
+	GuildWebhooks          Type = 5
+	Guilds                 Type = 0
 )
 
-func singularIntentToEventFlags(i Flag) (flags event.Flag) {
-	switch i {
-	case DirectMessageReactions:
-		flags = event.MessageReactionCreate | event.MessageReactionDelete | event.MessageReactionDeleteAll | event.MessageReactionDeleteEmoji
-	case DirectMessageTyping:
-		flags = event.TypingStart
-	case DirectMessages:
-		flags = event.ChannelCreate | event.MessageCreate | event.MessageUpdate | event.MessageDelete | event.ChannelPinsUpdate
-	case GuildBans:
-		flags = event.GuildBanCreate | event.GuildBanDelete
-	case GuildEmojis:
-		flags = event.GuildEmojisUpdate
-	case GuildIntegrations:
-		flags = event.GuildIntegrationsUpdate | event.IntegrationCreate | event.IntegrationUpdate | event.IntegrationDelete
-	case GuildInvites:
-		flags = event.InviteCreate | event.InviteDelete
-	case GuildMembers:
-		flags = event.GuildMemberCreate | event.GuildMemberUpdate | event.GuildMemberDelete | event.ThreadMembersUpdate
-	case GuildMessageReactions:
-		flags = event.MessageReactionCreate | event.MessageReactionDelete | event.MessageReactionDeleteAll | event.MessageReactionDeleteEmoji
-	case GuildMessageTyping:
-		flags = event.TypingStart
-	case GuildMessages:
-		flags = event.MessageCreate | event.MessageUpdate | event.MessageDelete | event.MessageDeleteBulk
-	case GuildPresences:
-		flags = event.PresenceUpdate
-	case GuildVoiceStates:
-		flags = event.VoiceStateUpdate
-	case GuildWebhooks:
-		flags = event.WebhooksUpdate
-	case Guilds:
-		flags = event.GuildCreate | event.GuildUpdate | event.GuildDelete | event.GuildRoleCreate | event.GuildRoleUpdate | event.GuildRoleDelete | event.ChannelCreate | event.ChannelUpdate | event.ChannelDelete | event.ChannelPinsUpdate | event.ThreadCreate | event.ThreadUpdate | event.ThreadDelete | event.ThreadListSync | event.ThreadMemberUpdate | event.ThreadMembersUpdate
-	}
-	return flags
+var intentsToEventsMap = map[Type][]event.Type{
+	DirectMessageReactions: []event.Type{event.MessageReactionCreate, event.MessageReactionDelete, event.MessageReactionDeleteAll, event.MessageReactionDeleteEmoji},
+	DirectMessageTyping:    []event.Type{event.TypingStart},
+	DirectMessages:         []event.Type{event.ChannelCreate, event.MessageCreate, event.MessageUpdate, event.MessageDelete, event.ChannelPinsUpdate},
+	GuildBans:              []event.Type{event.GuildBanCreate, event.GuildBanDelete},
+	GuildEmojis:            []event.Type{event.GuildEmojisUpdate},
+	GuildIntegrations:      []event.Type{event.GuildIntegrationsUpdate, event.IntegrationCreate, event.IntegrationUpdate, event.IntegrationDelete},
+	GuildInvites:           []event.Type{event.InviteCreate, event.InviteDelete},
+	GuildMembers:           []event.Type{event.GuildMemberCreate, event.GuildMemberUpdate, event.GuildMemberDelete, event.ThreadMembersUpdate},
+	GuildMessageReactions:  []event.Type{event.MessageReactionCreate, event.MessageReactionDelete, event.MessageReactionDeleteAll, event.MessageReactionDeleteEmoji},
+	GuildMessageTyping:     []event.Type{event.TypingStart},
+	GuildMessages:          []event.Type{event.MessageCreate, event.MessageUpdate, event.MessageDelete, event.MessageDeleteBulk},
+	GuildPresences:         []event.Type{event.PresenceUpdate},
+	GuildVoiceStates:       []event.Type{event.VoiceStateUpdate},
+	GuildWebhooks:          []event.Type{event.WebhooksUpdate},
+	Guilds:                 []event.Type{event.GuildCreate, event.GuildUpdate, event.GuildDelete, event.GuildRoleCreate, event.GuildRoleUpdate, event.GuildRoleDelete, event.ChannelCreate, event.ChannelUpdate, event.ChannelDelete, event.ChannelPinsUpdate, event.ThreadCreate, event.ThreadUpdate, event.ThreadDelete, event.ThreadListSync, event.ThreadMemberUpdate, event.ThreadMembersUpdate},
 }
 
-func All() Flag {
-	return DirectMessageReactions | DirectMessageTyping | DirectMessages | GuildBans | GuildEmojis | GuildIntegrations | GuildInvites | GuildMembers | GuildMessageReactions | GuildMessageTyping | GuildMessages | GuildPresences | GuildVoiceStates | GuildWebhooks | Guilds | 0
+var emptyStruct struct{}
+var dmIntents = map[Type]struct{}{
+	DirectMessageReactions: emptyStruct,
+	DirectMessageTyping:    emptyStruct,
+	DirectMessages:         emptyStruct,
 }
 
-func EventsToIntents(eventFlags event.Flag, dm bool) (Flag, error) {
-	if eventFlags.Size() == 0 {
-		return 0, errors.New("must be at least one event flag")
+func Events(intent Type) []event.Type {
+	if events, ok := intentsToEventsMap[intent]; ok {
+		cpy := make([]event.Type, len(events))
+		copy(cpy, events)
+		return cpy
+	}
+	return nil
+}
+
+func All() []Type {
+	return []Type{
+		DirectMessageReactions, DirectMessageTyping, DirectMessages, GuildBans, GuildEmojis, GuildIntegrations, GuildInvites, GuildMembers, GuildMessageReactions, GuildMessageTyping, GuildMessages, GuildPresences, GuildVoiceStates, GuildWebhooks, Guilds,
+	}
+}
+
+func Merge(intents ...Type) Type {
+	var merged Type
+	for i := range intents {
+		merged |= intents[i]
+	}
+	return merged
+}
+
+func DMEventsToIntents(src []event.Type) []Type {
+	return eventsToIntents(src, true)
+}
+
+func GuildEventsToIntents(src []event.Type) []Type {
+	return eventsToIntents(src, false)
+}
+
+func eventsToIntents(src []event.Type, dm bool) (intents []Type) {
+	contains := func(haystack []event.Type, needle event.Type) bool {
+		for i := range haystack {
+			if haystack[i] == needle {
+				return true
+			}
+		}
+		return false
 	}
 
-	var intent Flag
-	if (eventFlags & GuildBans.EventFlags()) > 0 {
-		intent |= GuildBans
-	}
-	if (eventFlags & GuildEmojis.EventFlags()) > 0 {
-		intent |= GuildEmojis
-	}
-	if (eventFlags & GuildIntegrations.EventFlags()) > 0 {
-		intent |= GuildIntegrations
-	}
-	if (eventFlags & GuildInvites.EventFlags()) > 0 {
-		intent |= GuildInvites
-	}
-	if (eventFlags & GuildMembers.EventFlags()) > 0 {
-		intent |= GuildMembers
-	}
-	if (eventFlags & GuildMessageReactions.EventFlags()) > 0 {
-		intent |= GuildMessageReactions
-	}
-	if (eventFlags & GuildMessageTyping.EventFlags()) > 0 {
-		intent |= GuildMessageTyping
-	}
-	if (eventFlags & GuildMessages.EventFlags()) > 0 {
-		intent |= GuildMessages
-	}
-	if (eventFlags & GuildPresences.EventFlags()) > 0 {
-		intent |= GuildPresences
-	}
-	if (eventFlags & GuildVoiceStates.EventFlags()) > 0 {
-		intent |= GuildVoiceStates
-	}
-	if (eventFlags & GuildWebhooks.EventFlags()) > 0 {
-		intent |= GuildWebhooks
-	}
-	if (eventFlags & Guilds.EventFlags()) > 0 {
-		intent |= Guilds
-	}
-
-	if dm {
-		if (eventFlags & DirectMessageReactions.EventFlags()) > 0 {
-			intent |= DirectMessageReactions
-		}
-		if (eventFlags & DirectMessageTyping.EventFlags()) > 0 {
-			intent |= DirectMessageTyping
-		}
-		if (eventFlags & DirectMessages.EventFlags()) > 0 {
-			intent |= DirectMessages
+	hits := make(map[Type]struct{})
+	for i := range src {
+		for intent, events := range intentsToEventsMap {
+			if _, isDM := dmIntents[intent]; (!dm && isDM) || (dm && !isDM) {
+				continue
+			}
+			if contains(events, src[i]) {
+				hits[intent] = emptyStruct
+			}
 		}
 	}
 
-	return intent, nil
+	for intent := range hits {
+		intents = append(intents, intent)
+	}
+	return intents
 }

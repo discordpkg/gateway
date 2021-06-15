@@ -29,25 +29,24 @@ Certain events and intents have been renamed in accordance to the famous CRUD na
 
 Philosophy/requirements:
  - Complete control of goroutines (if desired)
- - Events are bit flags and intents are a set of events (bit flags)
+ - intents are derived from GuildEvents and DMEvents specified in the configuration
+- desired events must be specified in the config, others are ignored (this allows for optimizations behind the scenes)
  - You're responsible for reading all incoming data
  - Sending gateway commands returns an error on failure
- - You only register for guild events by default (dm events must be stated explicitly)
  - context support
- - desired events must be specified in the config, others are ignored (this allows for optimizations behind the scenes)
  - Control over reconnect, disconnect, or behavior for handling discord errors
 
 ## Simple shard example 
 > This code uses github.com/gobwas/ws, but you are free to use other
-> websocket implementations as well. You just have to write your own Shard implmentation
+> websocket implementations as well. You just have to write your own Shard implementation
 > and use GatewayState. See shard.go for inspiration.
 
 Here no handler is registered. Simply replace `nil` with a function pointer to read events (events with operation code 0). 
 ```go
 shard, err := discordgateway.NewShard(nil, &discordgateway.ShardConfig{
     BotToken:            token,
-    Events:              event.All(),
-    DMIntents:           intent.DirectMessageReactions | intent.DirectMessageTyping | intent.DirectMessages,
+    GuildEvents:         event.All(),
+    DMEvents:            nil,
     TotalNumberOfShards: 1,
     IdentifyProperties: discordgateway.GatewayIdentifyProperties{
         OS:      "linux",
@@ -94,87 +93,6 @@ There is a bot running the gobwas code. Found in the cmd subdir. If you want to 
 
 It only reads incoming events and waits to crash. Once any alerts such as warning, error, fatal, panic triggers; I get a notification so I can quickly patch the problem!
 
-
-## Events and intents
-
-> I don't agree with the way Discord allows subscribing to specific group of events or the previous 
-"guild subscription" logic of theirs. Nor do I know what they will do in the future. And so I try to abstract this 
-> away. You should only worry about the events you want, not intents, guild subscriptions, or whatever else might 
-> be introduced later.
-
-Intents are derived from events, except the special case of Direct Messaging capabilities. Those needs to be 
-explicitly defined:
-
-```go
-intent.DirectMessages.EventFlags()
-```
-
-Events are defined as bit flags and intents are a bitmask consistent of a range of relevant events.
-
-```go
-event.GuildBanCreate = 0b0100000
-event.GuildBanDelete = 0b1000000
---------------------------------
-intent.GuildBans     = 0b1100000
-```
-
-You can specify a range of events to be ignored using bit operations:
-```go
-&ShardConfig{
-    Events: ^(event.GuildBanCreate | event.GuildBanDelete),
-}
-```
-
-Or just state you want whatever a certain intent holds:
-```go
-&ShardConfig{
-    Events: intent.GuildMessages.EventFlags(),
-}
-```
-
-Be aware that DM intents holds custom event flags. These are used internally to correctly understand which events you
-are requesting.
-
-Events not specified are discarded at the package level, and will not trigger the registered handler.
-
-# Configuration
-
-## Shard
-
-### Intents
-
-Intents are derived from event IDs. Intents that deals with DM events or events that can only take place when the shard ID is 0, must be provided explicitly.
-
-Both intents and events are turned on and off by bit flags. Since intents states whether or not a specific range of events should be sent from Discord, we can say that a intent I subsumes a event E, if the bit value of E exists within the bit range of I.
-
-intent.Guilds = 
-
-Imagine that each event ID is a bit flag, and that intents 
-
-```go
-// I don't need direct message capabilities
-conf := &discordgateway.ShardConfig{
-    Events: event.MessageCreate | event.MessageDelete,
-}
-```
-
-```go
-// I need to handle direct messages
-conf := &discordgateway.ShardConfig{
-    Events: event.MessageCreate | event.MessageDelete,
-    Intents: intent.DirectMessages, // explicitly stated
-}
-```
-
-```go
-// I need to handle direct messages
-conf := &discordgateway.ShardConfig{
-    Events: event.MessageCreate | event.MessageDelete,
-    Intents: intent.DirectMessages | intent.GuildBans, // redundant intent, will error
-}
-
-// panic: intent.GuildBans does not subsume any given intent IDs 
-```
 
 ## Support
 

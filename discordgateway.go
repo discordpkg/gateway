@@ -14,7 +14,7 @@ type RawMessage = json.RawMessage
 
 type ShardID uint16
 
-type Handler func(ShardID, event.Flag, RawMessage)
+type Handler func(ShardID, event.Type, RawMessage)
 
 type GatewayHello struct {
 	HeartbeatIntervalMilli int64 `json:"heartbeat_interval"`
@@ -43,5 +43,5 @@ type GatewayIdentify struct {
 	LargeThreshold uint8       `json:"large_threshold,omitempty"`
 	Shard          [2]uint     `json:"shard"`
 	Presence       interface{} `json:"presence"`
-	Intents        intent.Flag `json:"intents"`
+	Intents        intent.Type `json:"intents"`
 }

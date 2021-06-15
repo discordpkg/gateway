@@ -4,79 +4,92 @@ package intent
 // Warning: This file is overwritten at "go generate", instead adapt internal/constants/events.go and run go generate
 
 import (
-       "errors"
-       "math/bits"
-
        "github.com/andersfylling/discordgateway/event"
        "github.com/andersfylling/discordgateway/internal/constants"
 )
 
-type Flag constants.Intent
+type Type constants.Intent
 
-func (i Flag) Size() int {
-    return bits.OnesCount64(uint64(i))
-}
-
-func (i Flag) EventFlags() (flags event.Flag) {
-    if i.Size() == 0 {
-        return 0
-    }
-    if i.Size() == 1 {
-        return singularIntentToEventFlags(i)
-    }
-
-    for in := Flag(1); in < All(); in = in << 1 {
-        if (in & i) == 0 {
-            continue
-        }
-
-        flags |= singularIntentToEventFlags(in)
-    }
-    return flags
+func (i Type) Events() []event.Type {
+    return Events(i)
 }
 
 const (
 {{- range .}}
-    {{.}} Flag = {{.Intent}}
+    {{.}} Type = {{.Intent}}
 {{- end}}
 )
 
-func singularIntentToEventFlags(i Flag) (flags event.Flag) {
-    switch i {
-    {{- range .}}
-    case {{.}}: flags = {{.Events}}
-    {{- end}}
-    }
-    return flags
+var intentsToEventsMap = map[Type][]event.Type{
+{{- range .}}
+    {{.}}: {{.Events}},
+{{- end}}
 }
 
-func All() Flag {
-    return {{range .}}{{.}} | {{- end}} 0
+var emptyStruct struct{}
+var dmIntents = map[Type]struct{}{
+{{- range .}}
+{{- if .IsDM }}
+    {{.}}: emptyStruct,
+{{- end}}
+{{- end}}
 }
 
-func EventsToIntents(eventFlags event.Flag, dm bool) (Flag, error) {
-    if eventFlags.Size() == 0 {
-        return 0, errors.New("must be at least one event flag")
+func Events(intent Type) []event.Type {
+    if events, ok := intentsToEventsMap[intent]; ok {
+        cpy := make([]event.Type, len(events))
+        copy(cpy, events)
+        return cpy
+    }
+    return nil
+}
+
+func All() []Type {
+    return []Type{
+        {{range .}}{{.}}, {{- end}}
+    }
+}
+
+func Merge(intents ...Type) Type {
+    var merged Type
+    for i := range intents {
+        merged |= intents[i]
+    }
+    return merged
+}
+
+func DMEventsToIntents(src []event.Type) []Type {
+    return eventsToIntents(src, true)
+}
+
+func GuildEventsToIntents(src []event.Type) []Type {
+    return eventsToIntents(src, false)
+}
+
+func eventsToIntents(src []event.Type, dm bool) (intents []Type) {
+    contains := func(haystack []event.Type, needle event.Type) bool {
+        for i := range haystack {
+            if haystack[i] == needle {
+                return true
+            }
+        }
+        return false
     }
 
-    var intent Flag
-{{- range .}}
-    {{- if not .IsDM }}
-        if (eventFlags & {{.}}.EventFlags()) > 0 {
-            intent |= {{.}}
+    hits := make(map[Type]struct{})
+    for i := range src {
+        for intent, events := range intentsToEventsMap {
+            if _, isDM := dmIntents[intent]; (!dm && isDM) || (dm && !isDM) {
+                continue
+            }
+            if contains(events, src[i]) {
+                hits[intent] = emptyStruct
+            }
         }
-    {{- end}}
-{{- end}}
-
-    if dm {
-{{- range .}}
-    {{- if .IsDM }}
-        if (eventFlags & {{.}}.EventFlags()) > 0 {
-            intent |= {{.}}
-        }
-    {{- end}}
-{{- end}}
     }
 
-    return intent, nil
+    for intent := range hits {
+        intents = append(intents, intent)
+    }
+    return intents
 }

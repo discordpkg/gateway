@@ -15,7 +15,6 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/andersfylling/discordgateway/event"
-	"github.com/andersfylling/discordgateway/intent"
 	"github.com/andersfylling/discordgateway/json"
 	"github.com/andersfylling/discordgateway/log"
 	"github.com/andersfylling/discordgateway/opcode"
@@ -38,39 +37,28 @@ type ShardConfig struct {
 
 	IdentifyProperties GatewayIdentifyProperties
 
-	Events event.Flag
-
-	// DMIntents if your application requires events related to direct messaging. You can explicitly specify them here.
-	// specifying intents outside of the direct message scope will cause an error.
-	//
-	// Intents are derived from the specified events: Events
-	DMIntents intent.Flag
+	GuildEvents []event.Type
+	DMEvents    []event.Type
 }
 
-func NewShard(handler func(event.Flag, []byte), conf *ShardConfig) (*Shard, error) {
-	derivedIntents, err := intent.EventsToIntents(conf.Events, false)
-	if err != nil {
-		return nil, fmt.Errorf("unable to derive intents from events: %w", err)
-	}
-
+func NewShard(handler func(event.Type, []byte), conf *ShardConfig) (*Shard, error) {
 	gatewayConf := GatewayStateConfig{
 		BotToken:            conf.BotToken,
-		Intents:             conf.DMIntents | derivedIntents,
 		ShardID:             conf.ShardID,
 		TotalNumberOfShards: conf.TotalNumberOfShards,
 		Properties:          conf.IdentifyProperties,
+		GuildEvents:         conf.GuildEvents,
+		DMEvents:            conf.DMEvents,
 	}
 	return &Shard{
 		NewGatewayClient(&gatewayConf),
-		conf.Events,
 		handler,
 	}, nil
 }
 
 type Shard struct {
-	State     *GatewayState
-	whitelist event.Flag
-	handler   func(event.Flag, []byte)
+	State   *GatewayState
+	handler func(event.Type, []byte)
 }
 
 // Dial sets up the websocket connection before identifying with the gateway.
@@ -236,7 +224,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 		switch payload.Op {
 		case opcode.EventDispatch:
 			if s.handler != nil {
-				s.handler(payload.EventFlag, payload.Data)
+				s.handler(payload.EventName, payload.Data)
 			}
 		case opcode.EventInvalidSession:
 			closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)
