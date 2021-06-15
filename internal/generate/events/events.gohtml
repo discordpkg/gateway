@@ -22,6 +22,15 @@ func (f Flag) Size() int {
     return bits.OnesCount64(uint64(f))
 }
 
+// String discord string value for event. Panics if flag is not a singular event
+func (f Flag) String() string {
+    str, err := String(f)
+    if err != nil {
+        panic(err)
+    }
+    return str
+}
+
 // list off all {{ len . }} discord events
 const (
     _ Flag = 0b1 << iota
