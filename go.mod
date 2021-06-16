@@ -3,6 +3,7 @@ module github.com/andersfylling/discordgateway
 go 1.16
 
 require (
+	github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.0.2

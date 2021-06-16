@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"github.com/andersfylling/discordgateway/event"
 	"github.com/andersfylling/discordgateway/json"
+	"github.com/bradfitz/iter"
+	"io"
 	"net"
 	"strconv"
+	"time"
 
 	"go.uber.org/atomic"
 
@@ -25,6 +28,56 @@ func (c *CloseError) Error() string {
 	return fmt.Sprintf("%d: %s", c.Code, c.Reason)
 }
 
+type channelCloser struct {
+	c      chan int
+	closed atomic.Bool
+}
+
+func (c *channelCloser) Close() error {
+	if c.c != nil {
+		close(c.c)
+		c.closed.Store(true)
+	}
+	return nil
+}
+
+func NewCommandRateLimiter() (<-chan int, io.Closer) {
+	burstCapacity := 120
+	burstDuration := 60 * time.Second
+
+	c := make(chan int, burstCapacity)
+	closer := &channelCloser{c: c}
+
+	go func() {
+		refill := func() {
+			burstSize := burstCapacity - len(c)
+			burstSize -= 4 // reserve 4 calls for heartbeat
+			burstSize -= 1 // reserve one call, in case discord requests a heartbeat
+
+			for range iter.N(burstSize) {
+				c <- 0
+			}
+		}
+
+		t := time.NewTicker(burstDuration)
+		defer t.Stop()
+
+		refill()
+		for {
+			<-t.C
+
+			if closer.closed.Load() {
+				// channel has been closed
+				break
+			}
+
+			refill()
+		}
+	}()
+
+	return c, closer
+}
+
 var emptyStruct struct{}
 
 func NewGatewayClient(conf *GatewayStateConfig) *GatewayState {
@@ -35,26 +88,34 @@ func NewGatewayClient(conf *GatewayStateConfig) *GatewayState {
 	}
 
 	// derive intents
-	gs.intents = intent.Merge(conf.Intents()...)
+	gs.intents = intent.Merge(gs.conf.Intents()...)
 
 	// whitelist events
-	for _, evt := range conf.DMEvents {
+	for _, evt := range gs.conf.DMEvents {
 		gs.whitelist[evt] = emptyStruct
 	}
-	for _, evt := range conf.GuildEvents {
+	for _, evt := range gs.conf.GuildEvents {
 		gs.whitelist[evt] = emptyStruct
+	}
+
+	// rate limit commands
+	if gs.conf.CommandRateLimitChan == nil {
+		var closer io.Closer
+		gs.conf.CommandRateLimitChan, closer = NewCommandRateLimiter()
+		gs.closers = append(gs.closers, closer)
 	}
 
 	return gs
 }
 
 type GatewayStateConfig struct {
-	BotToken            string
-	ShardID             uint
-	TotalNumberOfShards uint
-	Properties          GatewayIdentifyProperties
-	GuildEvents         []event.Type
-	DMEvents            []event.Type
+	BotToken             string
+	ShardID              uint
+	TotalNumberOfShards  uint
+	Properties           GatewayIdentifyProperties
+	CommandRateLimitChan <-chan int
+	GuildEvents          []event.Type
+	DMEvents             []event.Type
 }
 
 func (gsc *GatewayStateConfig) Intents() (intents []intent.Type) {
@@ -87,6 +148,14 @@ type GatewayState struct {
 	intents              intent.Type
 	sessionID            string
 	sentResumeOrIdentify atomic.Bool
+	closers              []io.Closer
+}
+
+func (gs *GatewayState) Close() error {
+	for _, closer := range gs.closers {
+		_ = closer.Close()
+	}
+	return nil
 }
 
 func (gs *GatewayState) isSendOpCode(op opcode.OpCode) bool {
@@ -107,6 +176,11 @@ func (gs *GatewayState) isSendOpCode(op opcode.OpCode) bool {
 func (gs *GatewayState) Write(client IOFlushWriter, op opcode.OpCode, payload json.RawMessage) (err error) {
 	if !gs.isSendOpCode(op) {
 		return errors.New(fmt.Sprintf("operation code %d is not for outgoing payloads", op))
+	}
+
+	if op != opcode.EventHeartbeat {
+		// heartbeat should always be sent, regardless!
+		<-gs.conf.CommandRateLimitChan
 	}
 
 	return gs.state.Write(client, op, payload)

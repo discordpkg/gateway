@@ -15,14 +15,24 @@ import (
 	"github.com/andersfylling/discordgateway/opcode"
 )
 
-func NewGatewayState() GatewayState {
+func NewGatewayState() *GatewayState {
 	return NewGatewayStateWithSeqNumber(0)
 }
 
-func NewGatewayStateWithSeqNumber(seq int64) GatewayState {
-	return GatewayState{
-		state: newStateWithSeqNumber(seq),
-	}
+var defaultGatewayStateConfig = &GatewayStateConfig{
+	BotToken:             "dsfsdf",
+	ShardID:              0,
+	TotalNumberOfShards:  1,
+	Properties:           GatewayIdentifyProperties{},
+	CommandRateLimitChan: nil,
+	GuildEvents:          event.All(),
+	DMEvents:             event.All(),
+}
+
+func NewGatewayStateWithSeqNumber(seq int64) *GatewayState {
+	gs := NewGatewayClient(defaultGatewayStateConfig)
+	gs.state = newStateWithSeqNumber(seq)
+	return gs
 }
 
 func TestGatewayState_Write(t *testing.T) {
@@ -109,12 +119,7 @@ func TestGatewayState_Heartbeat(t *testing.T) {
 func TestGatewayState_Identify(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		client := NewGatewayState()
-		client.conf = GatewayStateConfig{
-			BotToken:            "kaicyeurtbecgresn",
-			GuildEvents:         intent.Guilds.Events(),
-			ShardID:             0,
-			TotalNumberOfShards: 1,
-		}
+		client.conf.GuildEvents = intent.Guilds.Events()
 		mock := &IOMock{
 			writeChan: make(chan []byte, 2),
 		}
@@ -169,12 +174,7 @@ func TestGatewayState_Identify(t *testing.T) {
 func TestGatewayState_Resume(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		client := NewGatewayState()
-		client.conf = GatewayStateConfig{
-			BotToken:            "kaicyeurtbecgresn",
-			GuildEvents:         intent.Guilds.Events(),
-			ShardID:             0,
-			TotalNumberOfShards: 1,
-		}
+		client.conf.GuildEvents = intent.Guilds.Events()
 		client.sessionID = "kdfjhsdk"
 		mock := &IOMock{
 			writeChan: make(chan []byte, 2),
