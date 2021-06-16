@@ -103,6 +103,6 @@ It only reads incoming events and waits to crash. Once any alerts such as warnin
    - [ ] ETF
    - [ ] Rate limit
      - [ ] Identify
-     - [ ] Commands
+     - [x] Commands
  - [ ] Shard(s) manager
  - [ ] Buffer pool
