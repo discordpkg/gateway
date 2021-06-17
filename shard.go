@@ -64,8 +64,8 @@ type Shard struct {
 // Dial sets up the websocket connection before identifying with the gateway.
 // The url must be complete and specify api version and encoding:
 //  "wss://gateway.discord.gg/"                     => invalid
-//  "wss://gateway.discord.gg/?v=8"                 => invalid
-//  "wss://gateway.discord.gg/?v=8&encoding=json"   => valid
+//  "wss://gateway.discord.gg/?v=9"                 => invalid
+//  "wss://gateway.discord.gg/?v=9&encoding=json"   => valid
 func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn, err error) {
 	u, urlErr := url.Parse(URLString)
 	if urlErr != nil {
@@ -75,8 +75,8 @@ func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn
 	if u.Scheme != "ws" && u.Scheme != "wss" {
 		return nil, errors.New("url scheme was not websocket (ws nor wss)")
 	}
-	if v := u.Query().Get("v"); v != "8" {
-		return nil, errors.New("only discord api version 8 is supported")
+	if v := u.Query().Get("v"); v != "9" {
+		return nil, errors.New("only discord api version 9 is supported")
 	}
 	if encoding := u.Query().Get("encoding"); encoding != "json" {
 		return nil, errors.New("currently, only supports json encoding of discord data")

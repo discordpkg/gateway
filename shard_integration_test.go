@@ -44,7 +44,7 @@ func TestShard(t *testing.T) {
 		t.Fatal("failed to create shard", err)
 	}
 
-	conn, err := shard.Dial(ctx, "wss://gateway.discord.gg/?v=8&encoding=json")
+	conn, err := shard.Dial(ctx, "wss://gateway.discord.gg/?v=9&encoding=json")
 	if err != nil {
 		t.Fatal("failed to dial")
 	}
