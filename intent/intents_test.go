@@ -49,3 +49,9 @@ func TestDMEventsToIntents(t *testing.T) {
 		}
 	}
 }
+
+func TestAll(t *testing.T) {
+	if All != 32767 {
+		t.Fatalf("incorrect intent sum. Got %d, wants %d", All, 65534)
+	}
+}
