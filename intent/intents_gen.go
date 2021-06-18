@@ -37,7 +37,7 @@ const All Type = DirectMessageReactions | DirectMessageTyping | DirectMessages |
 var intentsToEventsMap = map[Type][]event.Type{
 	DirectMessageReactions: []event.Type{event.MessageReactionCreate, event.MessageReactionDelete, event.MessageReactionDeleteAll, event.MessageReactionDeleteEmoji},
 	DirectMessageTyping:    []event.Type{event.TypingStart},
-	DirectMessages:         []event.Type{event.ChannelCreate, event.MessageCreate, event.MessageUpdate, event.MessageDelete, event.ChannelPinsUpdate},
+	DirectMessages:         []event.Type{event.MessageCreate, event.MessageUpdate, event.MessageDelete, event.ChannelPinsUpdate},
 	GuildBans:              []event.Type{event.GuildBanCreate, event.GuildBanDelete},
 	GuildEmojis:            []event.Type{event.GuildEmojisUpdate},
 	GuildIntegrations:      []event.Type{event.GuildIntegrationsUpdate, event.IntegrationCreate, event.IntegrationUpdate, event.IntegrationDelete},
@@ -96,8 +96,7 @@ func eventsToIntents(src []event.Type, dm bool) (intents Type) {
 
 	for i := range src {
 		for intent, events := range intentsToEventsMap {
-			_, isDM := dmIntents[intent]
-			if (!dm && isDM) || (dm && !isDM) {
+			if _, isDM := dmIntents[intent]; (!dm && isDM) || (dm && !isDM) {
 				continue
 			}
 			if contains(events, src[i]) {
