@@ -96,7 +96,8 @@ func eventsToIntents(src []event.Type, dm bool) (intents Type) {
 
 	for i := range src {
 		for intent, events := range intentsToEventsMap {
-			if _, isDM := dmIntents[intent]; (!dm && isDM) || (dm && !isDM) {
+			_, isDM := dmIntents[intent]
+			if (!dm && isDM) || (dm && !isDM) {
 				continue
 			}
 			if contains(events, src[i]) {

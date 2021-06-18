@@ -108,8 +108,8 @@ var GuildMessageTyping = relation{
 
 var DirectMessages = relation{
 	Events: []event.Type{
-		event.ChannelCreate, event.MessageCreate, event.MessageUpdate,
-		event.MessageDelete, event.ChannelPinsUpdate,
+		event.MessageCreate, event.MessageUpdate, event.MessageDelete,
+		event.ChannelPinsUpdate,
 	},
 	Intent: DirectMessagesVal,
 }
