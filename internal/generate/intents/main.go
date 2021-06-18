@@ -36,11 +36,11 @@ func main() {
 		}
 
 		events := unwrapEvents(data["Events"])
-		intent := data["Intent"].(*ast.Ident).Obj.Data.(int)
+		//intent := data["Intent"].(*ast.Ident).Obj.Data.(int)
 
 		intents = append(intents, &intentInfo{
 			Name:   name,
-			Intent: fmt.Sprint(intent),
+			Intent: "constants." + name + "Val",
 			Events: fmt.Sprintf("[]event.Type{%s}", strings.Join(events, ",")),
 		})
 	}

@@ -50,10 +50,15 @@ func NewShard(handler func(event.Type, []byte), conf *ShardConfig) (*Shard, erro
 		GuildEvents:         conf.GuildEvents,
 		DMEvents:            conf.DMEvents,
 	}
-	return &Shard{
+	shard := &Shard{
 		NewGatewayClient(&gatewayConf),
 		handler,
-	}, nil
+	}
+
+	log.Debug("intents:", shard.State.intents)
+	log.Debug("whitelisted events:", shard.State.whitelist)
+
+	return shard, nil
 }
 
 type Shard struct {

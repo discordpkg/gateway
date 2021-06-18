@@ -16,7 +16,7 @@ func (i Type) Events() []event.Type {
 
 const (
 {{- range .}}
-    {{.}} Type = {{.Intent}}
+    {{.}} = Type({{.Intent}})
 {{- end}}
 )
 

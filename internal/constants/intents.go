@@ -5,22 +5,22 @@ import "github.com/andersfylling/discordgateway/event"
 type Intent uint32
 
 const (
-	guilds Intent = 0b1 << iota
-	guildMembers
-	guildBans
-	guildEmojis
-	guildIntegrations
-	guildWebhooks
-	guildInvites
-	guildVoiceStates
-	guildPresences
-	guildMessages
-	guildMessageReactions
-	guildMessageTyping
+	GuildsVal Intent = 1 << iota
+	GuildMembersVal
+	GuildBansVal
+	GuildEmojisVal
+	GuildIntegrationsVal
+	GuildWebhooksVal
+	GuildInvitesVal
+	GuildVoiceStatesVal
+	GuildPresencesVal
+	GuildMessagesVal
+	GuildMessageReactionsVal
+	GuildMessageTypingVal
 
-	directMessages
-	directMessageReactions
-	directMessageTyping
+	DirectMessagesVal
+	DirectMessageReactionsVal
+	DirectMessageTypingVal
 )
 
 type relation struct {
@@ -36,7 +36,7 @@ var Guilds = relation{
 		event.ThreadCreate, event.ThreadUpdate, event.ThreadDelete, event.ThreadListSync,
 		event.ThreadMemberUpdate, event.ThreadMembersUpdate,
 	},
-	Intent: guilds,
+	Intent: GuildsVal,
 }
 
 var GuildMembers = relation{
@@ -44,17 +44,17 @@ var GuildMembers = relation{
 		event.GuildMemberCreate, event.GuildMemberUpdate, event.GuildMemberDelete,
 		event.ThreadMembersUpdate,
 	},
-	Intent: guildMembers,
+	Intent: GuildMembersVal,
 }
 
 var GuildBans = relation{
 	Events: []event.Type{event.GuildBanCreate, event.GuildBanDelete},
-	Intent: guildBans,
+	Intent: GuildBansVal,
 }
 
 var GuildEmojis = relation{
 	Events: []event.Type{event.GuildEmojisUpdate},
-	Intent: guildEmojis,
+	Intent: GuildEmojisVal,
 }
 
 var GuildIntegrations = relation{
@@ -62,27 +62,27 @@ var GuildIntegrations = relation{
 		event.GuildIntegrationsUpdate,
 		event.IntegrationCreate, event.IntegrationUpdate, event.IntegrationDelete,
 	},
-	Intent: guildIntegrations,
+	Intent: GuildIntegrationsVal,
 }
 
 var GuildWebhooks = relation{
 	Events: []event.Type{event.WebhooksUpdate},
-	Intent: guildWebhooks,
+	Intent: GuildWebhooksVal,
 }
 
 var GuildInvites = relation{
 	Events: []event.Type{event.InviteCreate, event.InviteDelete},
-	Intent: guildInvites,
+	Intent: GuildInvitesVal,
 }
 
 var GuildVoiceStates = relation{
 	Events: []event.Type{event.VoiceStateUpdate},
-	Intent: guildVoiceStates,
+	Intent: GuildVoiceStatesVal,
 }
 
 var GuildPresences = relation{
 	Events: []event.Type{event.PresenceUpdate},
-	Intent: guildPresences,
+	Intent: GuildPresencesVal,
 }
 
 var GuildMessages = relation{
@@ -90,7 +90,7 @@ var GuildMessages = relation{
 		event.MessageCreate, event.MessageUpdate, event.MessageDelete,
 		event.MessageDeleteBulk,
 	},
-	Intent: guildMessages,
+	Intent: GuildMessagesVal,
 }
 
 var GuildMessageReactions = relation{
@@ -98,12 +98,12 @@ var GuildMessageReactions = relation{
 		event.MessageReactionCreate, event.MessageReactionDelete, event.MessageReactionDeleteAll,
 		event.MessageReactionDeleteEmoji,
 	},
-	Intent: guildMessageReactions,
+	Intent: GuildMessageReactionsVal,
 }
 
 var GuildMessageTyping = relation{
 	Events: []event.Type{event.TypingStart},
-	Intent: guildMessageTyping,
+	Intent: GuildMessageTypingVal,
 }
 
 var DirectMessages = relation{
@@ -111,7 +111,7 @@ var DirectMessages = relation{
 		event.ChannelCreate, event.MessageCreate, event.MessageUpdate,
 		event.MessageDelete, event.ChannelPinsUpdate,
 	},
-	Intent: directMessages,
+	Intent: DirectMessagesVal,
 }
 
 var DirectMessageReactions = relation{
@@ -119,10 +119,10 @@ var DirectMessageReactions = relation{
 		event.MessageReactionCreate, event.MessageReactionDelete, event.MessageReactionDeleteAll,
 		event.MessageReactionDeleteEmoji,
 	},
-	Intent: directMessageReactions,
+	Intent: DirectMessageReactionsVal,
 }
 
 var DirectMessageTyping = relation{
 	Events: []event.Type{event.TypingStart},
-	Intent: directMessageTyping,
+	Intent: DirectMessageTypingVal,
 }

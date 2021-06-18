@@ -14,6 +14,11 @@ func TestGuildEventsToIntents(t *testing.T) {
 	table := []test{
 		{GuildMessages, []event.Type{event.MessageCreate}},
 		{Guilds, []event.Type{event.GuildCreate, event.ChannelCreate}},
+		{GuildBans | GuildEmojis | GuildIntegrations |
+			GuildInvites | GuildMembers | GuildMessageReactions |
+			GuildMessageTyping | GuildMessages | GuildPresences |
+			GuildVoiceStates | GuildWebhooks | Guilds,
+			event.All()},
 	}
 
 	for i := range table {

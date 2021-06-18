@@ -104,7 +104,7 @@ func listen(logger *logrus.Logger, token string) {
 	}
 
 reconnect:
-	conn, err := shard.Dial(context.Background(), "wss://gateway.discord.gg/?v=8&encoding=json")
+	conn, err := shard.Dial(context.Background(), "wss://gateway.discord.gg/?v=9&encoding=json")
 	if err != nil {
 		logger.Fatalf("failed to open websocket connection. %w", err)
 	}

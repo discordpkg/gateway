@@ -15,21 +15,21 @@ func (i Type) Events() []event.Type {
 }
 
 const (
-	DirectMessageReactions Type = 13
-	DirectMessageTyping    Type = 14
-	DirectMessages         Type = 12
-	GuildBans              Type = 2
-	GuildEmojis            Type = 3
-	GuildIntegrations      Type = 4
-	GuildInvites           Type = 6
-	GuildMembers           Type = 1
-	GuildMessageReactions  Type = 10
-	GuildMessageTyping     Type = 11
-	GuildMessages          Type = 9
-	GuildPresences         Type = 8
-	GuildVoiceStates       Type = 7
-	GuildWebhooks          Type = 5
-	Guilds                 Type = 0
+	DirectMessageReactions = Type(constants.DirectMessageReactionsVal)
+	DirectMessageTyping    = Type(constants.DirectMessageTypingVal)
+	DirectMessages         = Type(constants.DirectMessagesVal)
+	GuildBans              = Type(constants.GuildBansVal)
+	GuildEmojis            = Type(constants.GuildEmojisVal)
+	GuildIntegrations      = Type(constants.GuildIntegrationsVal)
+	GuildInvites           = Type(constants.GuildInvitesVal)
+	GuildMembers           = Type(constants.GuildMembersVal)
+	GuildMessageReactions  = Type(constants.GuildMessageReactionsVal)
+	GuildMessageTyping     = Type(constants.GuildMessageTypingVal)
+	GuildMessages          = Type(constants.GuildMessagesVal)
+	GuildPresences         = Type(constants.GuildPresencesVal)
+	GuildVoiceStates       = Type(constants.GuildVoiceStatesVal)
+	GuildWebhooks          = Type(constants.GuildWebhooksVal)
+	Guilds                 = Type(constants.GuildsVal)
 )
 
 const All Type = DirectMessageReactions | DirectMessageTyping | DirectMessages | GuildBans | GuildEmojis | GuildIntegrations | GuildInvites | GuildMembers | GuildMessageReactions | GuildMessageTyping | GuildMessages | GuildPresences | GuildVoiceStates | GuildWebhooks | Guilds | 0
