@@ -35,6 +35,13 @@ func NewGatewayStateWithSeqNumber(seq int64) *GatewayState {
 	return gs
 }
 
+func TestGatewayState_IntentGeneration(t *testing.T) {
+	gs := NewGatewayState()
+	if gs.intents != intent.All {
+		t.Fatal("all intents should be activated")
+	}
+}
+
 func TestGatewayState_Write(t *testing.T) {
 	client := NewGatewayState()
 	mock := &IOMock{

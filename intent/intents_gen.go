@@ -32,6 +32,8 @@ const (
 	Guilds                 Type = 0
 )
 
+const All Type = DirectMessageReactions | DirectMessageTyping | DirectMessages | GuildBans | GuildEmojis | GuildIntegrations | GuildInvites | GuildMembers | GuildMessageReactions | GuildMessageTyping | GuildMessages | GuildPresences | GuildVoiceStates | GuildWebhooks | Guilds | 0
+
 var intentsToEventsMap = map[Type][]event.Type{
 	DirectMessageReactions: []event.Type{event.MessageReactionCreate, event.MessageReactionDelete, event.MessageReactionDeleteAll, event.MessageReactionDeleteEmoji},
 	DirectMessageTyping:    []event.Type{event.TypingStart},
@@ -66,12 +68,6 @@ func Events(intent Type) []event.Type {
 	return nil
 }
 
-func All() []Type {
-	return []Type{
-		DirectMessageReactions, DirectMessageTyping, DirectMessages, GuildBans, GuildEmojis, GuildIntegrations, GuildInvites, GuildMembers, GuildMessageReactions, GuildMessageTyping, GuildMessages, GuildPresences, GuildVoiceStates, GuildWebhooks, Guilds,
-	}
-}
-
 func Merge(intents ...Type) Type {
 	var merged Type
 	for i := range intents {
@@ -80,15 +76,15 @@ func Merge(intents ...Type) Type {
 	return merged
 }
 
-func DMEventsToIntents(src []event.Type) []Type {
+func DMEventsToIntents(src []event.Type) Type {
 	return eventsToIntents(src, true)
 }
 
-func GuildEventsToIntents(src []event.Type) []Type {
+func GuildEventsToIntents(src []event.Type) Type {
 	return eventsToIntents(src, false)
 }
 
-func eventsToIntents(src []event.Type, dm bool) (intents []Type) {
+func eventsToIntents(src []event.Type, dm bool) (intents Type) {
 	contains := func(haystack []event.Type, needle event.Type) bool {
 		for i := range haystack {
 			if haystack[i] == needle {
@@ -98,20 +94,16 @@ func eventsToIntents(src []event.Type, dm bool) (intents []Type) {
 		return false
 	}
 
-	hits := make(map[Type]struct{})
 	for i := range src {
 		for intent, events := range intentsToEventsMap {
 			if _, isDM := dmIntents[intent]; (!dm && isDM) || (dm && !isDM) {
 				continue
 			}
 			if contains(events, src[i]) {
-				hits[intent] = emptyStruct
+				intents |= intent
 			}
 		}
 	}
 
-	for intent := range hits {
-		intents = append(intents, intent)
-	}
 	return intents
 }

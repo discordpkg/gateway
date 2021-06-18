@@ -3,6 +3,7 @@ package discordgateway
 import (
 	"context"
 	"errors"
+	"github.com/andersfylling/discordgateway/intent"
 	"github.com/andersfylling/discordgateway/opcode"
 	"os"
 	"testing"
@@ -10,6 +11,28 @@ import (
 
 	"github.com/andersfylling/discordgateway/event"
 )
+
+func TestShardIntents(t *testing.T) {
+	shard, err := NewShard(nil, &ShardConfig{
+		BotToken: "sdjkfhsdf",
+		GuildEvents: []event.Type{
+			event.MessageCreate,
+		},
+		TotalNumberOfShards: 1,
+		IdentifyProperties: GatewayIdentifyProperties{
+			OS:      "linux",
+			Browser: "github.com/andersfylling/discordgateway v0",
+			Device:  "tester",
+		},
+	})
+	if err != nil {
+		t.Fatal("failed to create shard", err)
+	}
+
+	if shard.State.intents != intent.GuildMessages {
+		t.Fatal("incorrect message intents")
+	}
+}
 
 func TestShard(t *testing.T) {
 	if testing.Short() {

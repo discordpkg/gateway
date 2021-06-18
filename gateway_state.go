@@ -88,15 +88,10 @@ func NewGatewayClient(conf *GatewayStateConfig) *GatewayState {
 	}
 
 	// derive intents
-	gs.intents = intent.Merge(gs.conf.Intents()...)
+	gs.intents = gs.conf.Intents()
 
-	// whitelist events
-	for _, evt := range gs.conf.DMEvents {
-		gs.whitelist[evt] = emptyStruct
-	}
-	for _, evt := range gs.conf.GuildEvents {
-		gs.whitelist[evt] = emptyStruct
-	}
+	// whitelisted events
+	gs.whitelist = gs.conf.EventsMap()
 
 	// rate limit commands
 	if gs.conf.CommandRateLimitChan == nil {
@@ -118,19 +113,21 @@ type GatewayStateConfig struct {
 	DMEvents             []event.Type
 }
 
-func (gsc *GatewayStateConfig) Intents() (intents []intent.Type) {
-	intentsMap := make(map[intent.Type]struct{})
-	for _, i := range intent.DMEventsToIntents(gsc.DMEvents) {
-		intentsMap[i] = emptyStruct
-	}
-	for _, i := range intent.GuildEventsToIntents(gsc.GuildEvents) {
-		intentsMap[i] = emptyStruct
-	}
-
-	for i := range intentsMap {
-		intents = append(intents, i)
-	}
+func (gsc *GatewayStateConfig) Intents() (intents intent.Type) {
+	intents |= intent.GuildEventsToIntents(gsc.GuildEvents)
+	intents |= intent.DMEventsToIntents(gsc.DMEvents)
 	return intents
+}
+
+func (gsc *GatewayStateConfig) EventsMap() map[event.Type]struct{} {
+	events := make(map[event.Type]struct{})
+	for _, evt := range gsc.DMEvents {
+		events[evt] = emptyStruct
+	}
+	for _, evt := range gsc.GuildEvents {
+		events[evt] = emptyStruct
+	}
+	return events
 }
 
 // GatewayState should be discarded after the connection has closed.
