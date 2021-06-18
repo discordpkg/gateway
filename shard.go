@@ -55,8 +55,15 @@ func NewShard(handler func(event.Type, []byte), conf *ShardConfig) (*Shard, erro
 		handler,
 	}
 
+	whitelistToSlice := func() (events []event.Type) {
+		for e := range shard.State.whitelist {
+			events = append(events, e)
+		}
+		return events
+	}
+
 	log.Debug("intents:", shard.State.intents)
-	log.Debug("whitelisted events:", shard.State.whitelist)
+	log.Debug("whitelisted events:", whitelistToSlice())
 
 	return shard, nil
 }
