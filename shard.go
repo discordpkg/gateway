@@ -62,8 +62,8 @@ func NewShard(handler func(event.Type, []byte), conf *ShardConfig) (*Shard, erro
 		return events
 	}
 
-	log.Debug("intents:", shard.State.intents)
-	log.Debug("whitelisted events:", whitelistToSlice())
+	log.Debug("intents: ", shard.State.intents)
+	log.Debug("whitelisted events: ", whitelistToSlice())
 
 	return shard, nil
 }
