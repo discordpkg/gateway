@@ -56,8 +56,8 @@ func NewShard(handler Handler, conf *ShardConfig) (*Shard, error) {
 		DMEvents:            conf.DMEvents,
 	}
 	shard := &Shard{
-		NewGatewayClient(&gatewayConf),
-		handler,
+		State:   NewGatewayClient(&gatewayConf),
+		handler: handler,
 	}
 	shard.State.intents |= conf.Intents
 
@@ -75,8 +75,9 @@ func NewShard(handler Handler, conf *ShardConfig) (*Shard, error) {
 }
 
 type Shard struct {
-	State   *GatewayState
-	handler Handler
+	State      *GatewayState
+	handler    Handler
+	textWriter IOFlushWriter
 }
 
 // Dial sets up the websocket connection before identifying with the gateway.
@@ -114,12 +115,20 @@ func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn
 		}
 	}
 
+	s.textWriter = s.writer(conn, ws.OpText)
 	return conn, nil
 }
 
-func (s *Shard) Writer(conn net.Conn) IOFlushWriter {
-	writer := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpText)
-	return writer
+func (s *Shard) Write(data []byte) error {
+	if _, err := s.textWriter.Write(data); err != nil {
+		return fmt.Errorf("unable to write data to pipe: %w", err)
+	}
+
+	return s.textWriter.Flush()
+}
+
+func (s *Shard) writer(conn net.Conn, op ws.OpCode) IOFlushWriter {
+	return wsutil.NewWriter(conn, ws.StateClientSide, op)
 }
 
 func writeClose(closer func(IOFlushWriter) error, conn net.Conn, reason string) error {
@@ -162,7 +171,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 	}
 	defer closeConnection()
 
-	writer := s.Writer(conn)
+	writer := s.writer(conn, ws.OpText)
 	controlHandler := wsutil.ControlFrameHandler(conn, ws.StateClientSide)
 	rd := wsutil.Reader{
 		Source:          conn,
