@@ -124,12 +124,8 @@ func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn
 	return conn, nil
 }
 
-func (s *Shard) Write(data []byte) error {
-	if _, err := s.textWriter.Write(data); err != nil {
-		return fmt.Errorf("unable to write data to pipe: %w", err)
-	}
-
-	return s.textWriter.Flush()
+func (s *Shard) Write(op opcode.OpCode, data []byte) error {
+	return s.State.Write(s.textWriter, op, data)
 }
 
 func (s *Shard) writer(conn net.Conn, op ws.OpCode) IOFlushWriter {
