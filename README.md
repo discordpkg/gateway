@@ -88,6 +88,10 @@ if op, err := shard.EventLoop(context.Background(), conn); err != nil {
 }
 ```
 
+## Identify rate limit
+When you have multiple shards, you must inject a channel to rate limit identifies. The CommandRateLimitChan is optional in either case.
+When no channel for identifies are injected, one is created with the standard 1 identify per 5 second.
+
 ## Live bot for testing
 There is a bot running the gobwas code. Found in the cmd subdir. If you want to help out the "stress testing", you can add the bot here: https://discord.com/oauth2/authorize?scope=bot&client_id=792491747711123486&permissions=0
 
@@ -103,8 +107,8 @@ It only reads incoming events and waits to crash. Once any alerts such as warnin
    - [ ] Commands
    - [x] JSON
    - [ ] ETF
-   - [ ] Rate limit
-     - [ ] Identify
+   - [x] Rate limit
+     - [x] Identify
      - [x] Commands
  - [ ] Shard(s) manager
  - [ ] Buffer pool

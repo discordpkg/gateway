@@ -41,6 +41,9 @@ type ShardConfig struct {
 	GuildEvents []event.Type
 	DMEvents    []event.Type
 
+	CommandRateLimitChan  <-chan int
+	IdentifyRateLimitChan <-chan int
+
 	// Intents does not have to be specified as these are derived from GuildEvents
 	// and DMEvents. However, you can specify intents and it will be merged with the derived intents.
 	Intents intent.Type
@@ -48,12 +51,14 @@ type ShardConfig struct {
 
 func NewShard(handler Handler, conf *ShardConfig) (*Shard, error) {
 	gatewayConf := GatewayStateConfig{
-		BotToken:            conf.BotToken,
-		ShardID:             ShardID(conf.ShardID),
-		TotalNumberOfShards: conf.TotalNumberOfShards,
-		Properties:          conf.IdentifyProperties,
-		GuildEvents:         conf.GuildEvents,
-		DMEvents:            conf.DMEvents,
+		BotToken:              conf.BotToken,
+		ShardID:               ShardID(conf.ShardID),
+		TotalNumberOfShards:   conf.TotalNumberOfShards,
+		Properties:            conf.IdentifyProperties,
+		GuildEvents:           conf.GuildEvents,
+		DMEvents:              conf.DMEvents,
+		CommandRateLimitChan:  conf.CommandRateLimitChan,
+		IdentifyRateLimitChan: conf.IdentifyRateLimitChan,
 	}
 	shard := &Shard{
 		State:   NewGatewayClient(&gatewayConf),

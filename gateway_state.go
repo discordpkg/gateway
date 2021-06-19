@@ -42,17 +42,24 @@ func (c *channelCloser) Close() error {
 }
 
 func NewCommandRateLimiter() (<-chan int, io.Closer) {
-	burstCapacity := 120
-	burstDuration := 60 * time.Second
+	burstSize := 120
+	burstSize -= 4 // reserve 4 calls for heartbeat
+	burstSize -= 1 // reserve one call, in case discord requests a heartbeat
 
+	return NewRateLimiter(burstSize, 60*time.Second)
+}
+
+func NewIdentifyRateLimiter() (<-chan int, io.Closer) {
+	return NewRateLimiter(1, 5*time.Second)
+}
+
+func NewRateLimiter(burstCapacity int, burstDuration time.Duration) (<-chan int, io.Closer) {
 	c := make(chan int, burstCapacity)
 	closer := &channelCloser{c: c}
 
 	go func() {
 		refill := func() {
 			burstSize := burstCapacity - len(c)
-			burstSize -= 4 // reserve 4 calls for heartbeat
-			burstSize -= 1 // reserve one call, in case discord requests a heartbeat
 
 			for range iter.N(burstSize) {
 				c <- 0
@@ -95,10 +102,15 @@ func NewGatewayClient(conf *GatewayStateConfig) *GatewayState {
 	gs.whitelist[event.Ready] = emptyStruct
 	gs.whitelist[event.Resumed] = emptyStruct
 
-	// rate limit commands
+	// rate limits
 	if gs.conf.CommandRateLimitChan == nil {
 		var closer io.Closer
 		gs.conf.CommandRateLimitChan, closer = NewCommandRateLimiter()
+		gs.closers = append(gs.closers, closer)
+	}
+	if gs.conf.IdentifyRateLimitChan == nil {
+		var closer io.Closer
+		gs.conf.IdentifyRateLimitChan, closer = NewIdentifyRateLimiter()
 		gs.closers = append(gs.closers, closer)
 	}
 
@@ -106,13 +118,14 @@ func NewGatewayClient(conf *GatewayStateConfig) *GatewayState {
 }
 
 type GatewayStateConfig struct {
-	BotToken             string
-	ShardID              ShardID
-	TotalNumberOfShards  uint
-	Properties           GatewayIdentifyProperties
-	CommandRateLimitChan <-chan int
-	GuildEvents          []event.Type
-	DMEvents             []event.Type
+	BotToken              string
+	ShardID               ShardID
+	TotalNumberOfShards   uint
+	Properties            GatewayIdentifyProperties
+	CommandRateLimitChan  <-chan int
+	IdentifyRateLimitChan <-chan int
+	GuildEvents           []event.Type
+	DMEvents              []event.Type
 }
 
 func (gsc *GatewayStateConfig) Intents() (intents intent.Type) {
@@ -180,6 +193,9 @@ func (gs *GatewayState) Write(client IOFlushWriter, op opcode.OpCode, payload js
 	if op != opcode.EventHeartbeat {
 		// heartbeat should always be sent, regardless!
 		<-gs.conf.CommandRateLimitChan
+	}
+	if op == opcode.EventIdentify {
+		<-gs.conf.IdentifyRateLimitChan
 	}
 
 	return gs.state.Write(client, op, payload)
