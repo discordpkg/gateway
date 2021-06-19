@@ -99,6 +99,8 @@ It only reads incoming events and waits to crash. Once any alerts such as warnin
  - [ ] Voice
  - [x] Gateway
    - [X] Intents
+   - [x] Events
+   - [ ] Commands
    - [x] JSON
    - [ ] ETF
    - [ ] Rate limit

@@ -92,6 +92,8 @@ func NewGatewayClient(conf *GatewayStateConfig) *GatewayState {
 
 	// whitelisted events
 	gs.whitelist = gs.conf.EventsMap()
+	gs.whitelist[event.Ready] = emptyStruct
+	gs.whitelist[event.Resumed] = emptyStruct
 
 	// rate limit commands
 	if gs.conf.CommandRateLimitChan == nil {
@@ -105,7 +107,7 @@ func NewGatewayClient(conf *GatewayStateConfig) *GatewayState {
 
 type GatewayStateConfig struct {
 	BotToken             string
-	ShardID              uint
+	ShardID              ShardID
 	TotalNumberOfShards  uint
 	Properties           GatewayIdentifyProperties
 	CommandRateLimitChan <-chan int
@@ -214,7 +216,7 @@ func (gs *GatewayState) Identify(client IOFlushWriter) error {
 		Properties:     &gs.conf.Properties,
 		Compress:       false,
 		LargeThreshold: 0,
-		Shard:          [2]uint{gs.conf.ShardID, gs.conf.TotalNumberOfShards},
+		Shard:          [2]uint{uint(gs.conf.ShardID), gs.conf.TotalNumberOfShards},
 		Presence:       nil,
 		Intents:        gs.intents,
 	}

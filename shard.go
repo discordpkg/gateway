@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/andersfylling/discordgateway/intent"
 	"io"
 	"net"
 	"net/url"
@@ -39,12 +40,16 @@ type ShardConfig struct {
 
 	GuildEvents []event.Type
 	DMEvents    []event.Type
+
+	// Intents does not have to be specified as these are derived from GuildEvents
+	// and DMEvents. However, you can specify intents and it will be merged with the derived intents.
+	Intents intent.Type
 }
 
-func NewShard(handler func(event.Type, []byte), conf *ShardConfig) (*Shard, error) {
+func NewShard(handler Handler, conf *ShardConfig) (*Shard, error) {
 	gatewayConf := GatewayStateConfig{
 		BotToken:            conf.BotToken,
-		ShardID:             conf.ShardID,
+		ShardID:             ShardID(conf.ShardID),
 		TotalNumberOfShards: conf.TotalNumberOfShards,
 		Properties:          conf.IdentifyProperties,
 		GuildEvents:         conf.GuildEvents,
@@ -54,6 +59,7 @@ func NewShard(handler func(event.Type, []byte), conf *ShardConfig) (*Shard, erro
 		NewGatewayClient(&gatewayConf),
 		handler,
 	}
+	shard.State.intents |= conf.Intents
 
 	whitelistToSlice := func() (events []event.Type) {
 		for e := range shard.State.whitelist {
@@ -70,7 +76,7 @@ func NewShard(handler func(event.Type, []byte), conf *ShardConfig) (*Shard, erro
 
 type Shard struct {
 	State   *GatewayState
-	handler func(event.Type, []byte)
+	handler Handler
 }
 
 // Dial sets up the websocket connection before identifying with the gateway.
@@ -87,8 +93,8 @@ func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn
 	if u.Scheme != "ws" && u.Scheme != "wss" {
 		return nil, errors.New("url scheme was not websocket (ws nor wss)")
 	}
-	if v := u.Query().Get("v"); v != "9" {
-		return nil, errors.New("only discord api version 9 is supported")
+	if v := u.Query().Get("v"); v != "9" && v != "8" {
+		return nil, errors.New("only discord api version [8, 9] is supported")
 	}
 	if encoding := u.Query().Get("encoding"); encoding != "json" {
 		return nil, errors.New("currently, only supports json encoding of discord data")
@@ -236,7 +242,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 		switch payload.Op {
 		case opcode.EventDispatch:
 			if s.handler != nil {
-				s.handler(payload.EventName, payload.Data)
+				s.handler(s.State.conf.ShardID, payload.EventName, payload.Data)
 			}
 		case opcode.EventInvalidSession:
 			closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)

@@ -16,6 +16,12 @@ type ShardID uint16
 
 type Handler func(ShardID, event.Type, RawMessage)
 
+type HandlerStruct struct {
+	ShardID
+	Name event.Type
+	Data RawMessage
+}
+
 type GatewayHello struct {
 	HeartbeatIntervalMilli int64 `json:"heartbeat_interval"`
 }

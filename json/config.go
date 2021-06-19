@@ -9,6 +9,7 @@ var (
 	Indent        = json.Indent
 	NewDecoder    = json.NewDecoder
 	NewEncoder    = json.NewEncoder
+	Valid 		  = json.Valid
 )
 
 type (
