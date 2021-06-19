@@ -104,6 +104,58 @@ reconnect:
 }
 ```
 
+## Gateway command
+To request guild members, update voice state or update presence, you can utilize Shard.Write or GatewayState.Write (same logic). 
+The bytes argument should not contain the discord payload wrapper (operation code, event name, etc.), instead you write only
+the inner object and specify the relevant operation code.
+
+> Calling Write(..) before dial or instantiating a net.Conn object will cause the process to fail. You must be connected.
+
+```go
+
+package main
+
+import (
+	"context"
+	"github.com/andersfylling/discordgateway"
+	"github.com/andersfylling/discordgateway/event"
+	"github.com/andersfylling/discordgateway/log"
+	"github.com/andersfylling/discordgateway/opcode"
+	"os"
+)
+
+func main() {
+	shard, err := discordgateway.NewShard(nil, &discordgateway.ShardConfig{
+		BotToken:            os.Getenv("DISCORD_TOKEN"),
+		GuildEvents:         event.All(),
+		TotalNumberOfShards: 1,
+		IdentifyProperties: discordgateway.GatewayIdentifyProperties{
+			OS:      "linux",
+			Browser: "github.com/andersfylling/discordgateway v0",
+			Device:  "tester",
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if _, err := shard.Dial(context.Background(), "wss://gateway.discord.gg/?v=8&encoding=json"); err != nil {
+		log.Fatal("failed to open websocket connection. ", err)
+	}
+
+	req := `{"guild_id":"23423","limit":0,"query":""}`
+	if err := shard.Write(opcode.EventRequestGuildMembers, []byte(req)); err != nil {
+		log.Fatal("failed to request guild members", err)
+    }
+    
+    // ...
+}
+```
+
+If you need to manually set the intent value for whatever reason, the ShardConfig exposes an "Intents" field.
+Note that intents will still be derived from DMEvents and GuildEvents and added to the final intents value used
+to identify.
+
 ## Identify rate limit
 When you have multiple shards, you must inject a channel to rate limit identifies. The CommandRateLimitChan is optional in either case.
 When no channel for identifies are injected, one is created with the standard 1 identify per 5 second.
