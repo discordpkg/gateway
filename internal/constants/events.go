@@ -1,19 +1,10 @@
 package constants
 
-// Hello defines the heartbeat interval
-const Hello = "HELLO"
-
 // Ready contains the initial state information
 const Ready = "READY"
 
 // Resumed response to Resume
 const Resumed = "RESUMED"
-
-// Reconnect server is going away, client should reconnect to gateway and resume
-const Reconnect = "RECONNECT"
-
-// InvalidSession failure response to Identify or Resume or invalid active session
-const InvalidSession = "INVALID_SESSION"
 
 // ApplicationCommandCreate new Slash Command was created
 const ApplicationCommandCreate = "APPLICATION_COMMAND_CREATE"

@@ -5,7 +5,7 @@ package event
 
 type Type string
 
-// list off all 52 discord events
+// list off all 49 discord events
 const (
 	// ApplicationCommandCreate new Slash Command was created
 	ApplicationCommandCreate Type = "APPLICATION_COMMAND_CREATE"
@@ -70,9 +70,6 @@ const (
 	// GuildUpdate guild was updated
 	GuildUpdate Type = "GUILD_UPDATE"
 
-	// Hello defines the heartbeat interval
-	Hello Type = "HELLO"
-
 	// IntegrationCreate guild integration was created
 	IntegrationCreate Type = "INTEGRATION_CREATE"
 
@@ -84,9 +81,6 @@ const (
 
 	// InteractionCreate user used an interaction, such as a Slash Command
 	InteractionCreate Type = "INTERACTION_CREATE"
-
-	// InvalidSession failure response to Identify or Resume or invalid active session
-	InvalidSession Type = "INVALID_SESSION"
 
 	// InviteCreate	invite to a channel was created
 	InviteCreate Type = "INVITE_CREATE"
@@ -123,9 +117,6 @@ const (
 
 	// Ready contains the initial state information
 	Ready Type = "READY"
-
-	// Reconnect server is going away, client should reconnect to gateway and resume
-	Reconnect Type = "RECONNECT"
 
 	// Resumed response to Resume
 	Resumed Type = "RESUMED"
@@ -165,5 +156,5 @@ const (
 )
 
 func All() []Type {
-	return []Type{ApplicationCommandCreate, ApplicationCommandDelete, ApplicationCommandUpdate, ChannelCreate, ChannelDelete, ChannelPinsUpdate, ChannelUpdate, GuildBanCreate, GuildBanDelete, GuildCreate, GuildDelete, GuildEmojisUpdate, GuildIntegrationsUpdate, GuildMemberCreate, GuildMemberDelete, GuildMemberUpdate, GuildMembersChunk, GuildRoleCreate, GuildRoleDelete, GuildRoleUpdate, GuildUpdate, Hello, IntegrationCreate, IntegrationDelete, IntegrationUpdate, InteractionCreate, InvalidSession, InviteCreate, InviteDelete, MessageCreate, MessageDelete, MessageDeleteBulk, MessageReactionCreate, MessageReactionDelete, MessageReactionDeleteAll, MessageReactionDeleteEmoji, MessageUpdate, PresenceUpdate, Ready, Reconnect, Resumed, ThreadCreate, ThreadDelete, ThreadListSync, ThreadMemberUpdate, ThreadMembersUpdate, ThreadUpdate, TypingStart, UserUpdate, VoiceServerUpdate, VoiceStateUpdate, WebhooksUpdate}
+	return []Type{ApplicationCommandCreate, ApplicationCommandDelete, ApplicationCommandUpdate, ChannelCreate, ChannelDelete, ChannelPinsUpdate, ChannelUpdate, GuildBanCreate, GuildBanDelete, GuildCreate, GuildDelete, GuildEmojisUpdate, GuildIntegrationsUpdate, GuildMemberCreate, GuildMemberDelete, GuildMemberUpdate, GuildMembersChunk, GuildRoleCreate, GuildRoleDelete, GuildRoleUpdate, GuildUpdate, IntegrationCreate, IntegrationDelete, IntegrationUpdate, InteractionCreate, InviteCreate, InviteDelete, MessageCreate, MessageDelete, MessageDeleteBulk, MessageReactionCreate, MessageReactionDelete, MessageReactionDeleteAll, MessageReactionDeleteEmoji, MessageUpdate, PresenceUpdate, Ready, Resumed, ThreadCreate, ThreadDelete, ThreadListSync, ThreadMemberUpdate, ThreadMembersUpdate, ThreadUpdate, TypingStart, UserUpdate, VoiceServerUpdate, VoiceStateUpdate, WebhooksUpdate}
 }
