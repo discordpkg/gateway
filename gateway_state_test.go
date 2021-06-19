@@ -156,7 +156,7 @@ func TestGatewayState_Identify(t *testing.T) {
 		if client.conf.BotToken != identify.BotToken {
 			incorrect("Token", identify.BotToken, client.conf.BotToken)
 		}
-		if client.conf.ShardID != identify.Shard[0] {
+		if client.conf.ShardID != ShardID(identify.Shard[0]) {
 			incorrect("ShardID", identify.Shard[0], client.conf.ShardID)
 		}
 		if client.conf.TotalNumberOfShards > 0 && client.conf.TotalNumberOfShards != identify.Shard[1] {

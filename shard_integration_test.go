@@ -48,8 +48,8 @@ func TestShard(t *testing.T) {
 	}
 
 	recordedEvents := make(map[event.Type]struct{})
-	recordEvent := func(evt event.Type, _ []byte) {
-		recordedEvents[evt] = struct{}{}
+	var recordEvent Handler = func(id ShardID, e event.Type, message RawMessage) {
+		recordedEvents[e] = struct{}{}
 	}
 
 	shard, err := NewShard(recordEvent, &ShardConfig{
