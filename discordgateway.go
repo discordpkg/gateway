@@ -51,3 +51,7 @@ type GatewayIdentify struct {
 	Presence       interface{} `json:"presence"`
 	Intents        intent.Type `json:"intents"`
 }
+
+type IdentifyRateLimiter interface {
+	Take(ShardID) bool
+}

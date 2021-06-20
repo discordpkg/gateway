@@ -28,6 +28,22 @@ func (c *CloseError) Error() string {
 	return fmt.Sprintf("%d: %s", c.Code, c.Reason)
 }
 
+type channelTaker struct {
+	c <-chan int
+}
+
+func (c *channelTaker) Take(_ ShardID) bool {
+	if c.c != nil {
+		select {
+		case _, ok := <-c.c:
+			if ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 type channelCloser struct {
 	c      chan int
 	closed atomic.Bool
@@ -105,24 +121,25 @@ func NewGatewayClient(conf *GatewayStateConfig) *GatewayState {
 		gs.conf.CommandRateLimitChan, closer = NewCommandRateLimiter()
 		gs.closers = append(gs.closers, closer)
 	}
-	if gs.conf.IdentifyRateLimitChan == nil {
-		var closer io.Closer
-		gs.conf.IdentifyRateLimitChan, closer = NewIdentifyRateLimiter()
+	if gs.conf.IdentifyRateLimiter == nil {
+		channel, closer := NewIdentifyRateLimiter()
 		gs.closers = append(gs.closers, closer)
+
+		gs.conf.IdentifyRateLimiter = &channelTaker{c: channel}
 	}
 
 	return gs
 }
 
 type GatewayStateConfig struct {
-	BotToken              string
-	ShardID               ShardID
-	TotalNumberOfShards   uint
-	Properties            GatewayIdentifyProperties
-	CommandRateLimitChan  <-chan int
-	IdentifyRateLimitChan <-chan int
-	GuildEvents           []event.Type
-	DMEvents              []event.Type
+	BotToken             string
+	ShardID              ShardID
+	TotalNumberOfShards  uint
+	Properties           GatewayIdentifyProperties
+	CommandRateLimitChan <-chan int
+	IdentifyRateLimiter  IdentifyRateLimiter
+	GuildEvents          []event.Type
+	DMEvents             []event.Type
 }
 
 func (gsc *GatewayStateConfig) Intents() (intents intent.Type) {
@@ -192,7 +209,9 @@ func (gs *GatewayState) Write(client IOFlushWriter, op opcode.OpCode, payload js
 		<-gs.conf.CommandRateLimitChan
 	}
 	if op == opcode.EventIdentify {
-		<-gs.conf.IdentifyRateLimitChan
+		if available := gs.conf.IdentifyRateLimiter.Take(gs.conf.ShardID); !available {
+			return errors.New("identify rate limiter denied shard to identify")
+		}
 	}
 
 	return gs.state.Write(client, op, payload)

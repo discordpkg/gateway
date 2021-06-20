@@ -157,8 +157,10 @@ Note that intents will still be derived from DMEvents and GuildEvents and added 
 to identify.
 
 ## Identify rate limit
-When you have multiple shards, you must inject a channel to rate limit identifies. The CommandRateLimitChan is optional in either case.
-When no channel for identifies are injected, one is created with the standard 1 identify per 5 second.
+When you have multiple shards, you must inject a rate limiter for identify. The CommandRateLimitChan is optional in either case.
+When no rate limiter for identifies are injected, one is created with the standard 1 identify per 5 second.
+
+See the IdentifyRateLimiter interface for minimum implementation.
 
 ## Live bot for testing
 There is a bot running the gobwas code. Found in the cmd subdir. If you want to help out the "stress testing", you can add the bot here: https://discord.com/oauth2/authorize?scope=bot&client_id=792491747711123486&permissions=0
