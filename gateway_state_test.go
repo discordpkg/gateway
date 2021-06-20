@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/andersfylling/discordgateway/intent"
+	"github.com/bradfitz/iter"
 	"net"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/andersfylling/discordgateway/event"
 	"github.com/andersfylling/discordgateway/json"
@@ -239,6 +241,37 @@ func TestGatewayState_Resume(t *testing.T) {
 			t.Fatal("write should have returned a error")
 		} else if !errors.Is(err, net.ErrClosed) {
 			t.Fatalf("incorrect error. Got %+v", err)
+		}
+	})
+}
+
+func TestNewRateLimiter(t *testing.T) {
+	t.Run("10/10ms", func(t *testing.T) {
+		rl, closer := NewRateLimiter(10, 10*time.Millisecond)
+		defer closer.Close()
+
+		for range iter.N(10) {
+			select {
+			case <-rl:
+			default:
+				t.Fatal("no token available")
+			}
+		}
+
+		select {
+		case <-rl:
+			t.Fatal("there should be no token")
+		default:
+		}
+
+		<-time.After(10 * time.Millisecond)
+		select {
+		case <-rl:
+		default:
+			t.Fatal("no token available")
+		}
+		if len(rl) != 9 {
+			t.Fatal("expected there to be only 9 tokens left")
 		}
 	})
 }

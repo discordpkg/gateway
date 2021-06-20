@@ -56,23 +56,19 @@ func NewIdentifyRateLimiter() (<-chan int, io.Closer) {
 func NewRateLimiter(burstCapacity int, burstDuration time.Duration) (<-chan int, io.Closer) {
 	c := make(chan int, burstCapacity)
 	closer := &channelCloser{c: c}
+	refill := func() {
+		burstSize := burstCapacity - len(c)
+		for range iter.N(burstSize) {
+			c <- 0
+		}
+	}
 
 	go func() {
-		refill := func() {
-			burstSize := burstCapacity - len(c)
-
-			for range iter.N(burstSize) {
-				c <- 0
-			}
-		}
-
 		t := time.NewTicker(burstDuration)
 		defer t.Stop()
 
-		refill()
 		for {
 			<-t.C
-
 			if closer.closed.Load() {
 				// channel has been closed
 				break
@@ -82,6 +78,7 @@ func NewRateLimiter(burstCapacity int, burstDuration time.Duration) (<-chan int,
 		}
 	}()
 
+	refill()
 	return c, closer
 }
 
