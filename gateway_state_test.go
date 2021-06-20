@@ -264,7 +264,7 @@ func TestNewRateLimiter(t *testing.T) {
 		default:
 		}
 
-		<-time.After(10 * time.Millisecond)
+		<-time.After(11 * time.Millisecond)
 		select {
 		case <-rl:
 		default:

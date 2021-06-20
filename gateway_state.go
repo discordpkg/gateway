@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"strconv"
+	"sync"
 	"time"
 
 	"go.uber.org/atomic"
@@ -45,13 +46,23 @@ func (c *channelTaker) Take(_ ShardID) bool {
 }
 
 type channelCloser struct {
+	mu     sync.Mutex
 	c      chan int
-	closed atomic.Bool
+	closed bool
+}
+
+func (c *channelCloser) Closed() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.closed
 }
 
 func (c *channelCloser) Close() error {
-	if c.c != nil && c.closed.CAS(false, true) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.c != nil {
 		close(c.c)
+		c.closed = true
 	}
 	return nil
 }
@@ -73,12 +84,15 @@ func NewRateLimiter(burstCapacity int, burstDuration time.Duration) (<-chan int,
 	closer := &channelCloser{c: c}
 	refill := func() {
 		burstSize := burstCapacity - len(c)
+
+		closer.mu.Lock()
+		defer closer.mu.Unlock()
+		if closer.closed {
+			return
+		}
+
 		for range iter.N(burstSize) {
-			// might close during refill
-			select {
-			case c <- 0:
-			default:
-			}
+			c <- 0
 		}
 	}
 
@@ -88,7 +102,7 @@ func NewRateLimiter(burstCapacity int, burstDuration time.Duration) (<-chan int,
 
 		for {
 			<-t.C
-			if closer.closed.Load() {
+			if closer.Closed() {
 				// channel has been closed
 				break
 			}
