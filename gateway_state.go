@@ -74,7 +74,11 @@ func NewRateLimiter(burstCapacity int, burstDuration time.Duration) (<-chan int,
 	refill := func() {
 		burstSize := burstCapacity - len(c)
 		for range iter.N(burstSize) {
-			c <- 0
+			// might close during refill
+			select {
+			case c <- 0:
+			default:
+			}
 		}
 	}
 
