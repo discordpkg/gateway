@@ -50,9 +50,8 @@ type channelCloser struct {
 }
 
 func (c *channelCloser) Close() error {
-	if c.c != nil {
+	if c.c != nil && c.closed.CAS(false, true) {
 		close(c.c)
-		c.closed.Store(true)
 	}
 	return nil
 }
