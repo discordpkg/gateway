@@ -30,6 +30,8 @@ func (e ErrClosed) Error() string {
 	return e.err.Error()
 }
 
+var UnhandledControlFrameErr = errors.New("unhandled control frame")
+
 type ShardConfig struct {
 	BotToken string
 
@@ -203,6 +205,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 			}
 		}
 		if hdr.OpCode.IsControl() {
+			// discord does send close frames so these must be handled
 			if err := controlHandler(hdr, &rd); err != nil {
 				var normalClose wsutil.ClosedError
 				if errors.As(err, &normalClose) {
@@ -226,10 +229,10 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 			continue
 		}
 		if hdr.OpCode&ws.OpText == 0 {
+			// discord only uses text, even for heartbeats / ping/pong frames
 			if err := rd.Discard(); err != nil {
 				return opcode.Invalid, fmt.Errorf("failed to discard unwanted frame. %w", err)
 			}
-			log.Debug(fmt.Sprintf("discarded websocket frame due to wrong op: %s", string(hdr.OpCode)))
 			continue
 		}
 
