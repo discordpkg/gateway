@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/andersfylling/discordgateway/closecode"
 	"github.com/andersfylling/discordgateway/intent"
 	"github.com/bradfitz/iter"
 	"net"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -35,6 +37,16 @@ func NewGatewayStateWithSeqNumber(seq int64) *GatewayState {
 	gs := NewGatewayClient(defaultGatewayStateConfig)
 	gs.state = newStateWithSeqNumber(seq)
 	return gs
+}
+
+func TestCloseError_Error(t *testing.T) {
+	err := &CloseError{Code: closecode.AlreadyAuthenticated, Reason: "testing"}
+	if !strings.Contains(err.Error(), strconv.Itoa(int(closecode.AlreadyAuthenticated))) {
+		t.Error("missing close code")
+	}
+	if !strings.Contains(err.Error(), "testing") {
+		t.Error("missing reason")
+	}
 }
 
 func TestGatewayState_IntentGeneration(t *testing.T) {
