@@ -18,7 +18,7 @@ func TestClientShard(t *testing.T) {
 		}
 
 		for _, s := range randomSnowflakes {
-			if ClientShard(s, 1) != 0 {
+			if DeriveShardID(s, 1) != 0 {
 				t.Errorf("expected shard id to be 0, got %d", s)
 			}
 		}
@@ -31,8 +31,8 @@ func TestClientShard(t *testing.T) {
 
 		for i := range snowflakes {
 			s := shift(uint64(i))
-			shardID := ClientShard(s, uint(len(snowflakes)))
-			if shardID != uint(i) {
+			shardID := DeriveShardID(s, uint(len(snowflakes)))
+			if shardID != ShardID(i) {
 				t.Errorf("expected shard id to be %d, got %d", i, shardID)
 			}
 		}
