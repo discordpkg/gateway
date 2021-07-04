@@ -19,7 +19,7 @@ import (
 )
 
 type GatewayPayload struct {
-	Op        opcode.OpCode   `json:"op"`
+	Op        opcode.Type     `json:"op"`
 	Data      json.RawMessage `json:"d"`
 	Seq       int64           `json:"s,omitempty"`
 	EventName event.Type      `json:"t,omitempty"`
@@ -42,7 +42,7 @@ type state interface {
 	WriteNormalClose(client io.Writer) error
 	WriteRestartClose(client io.Writer) error
 	Read(client io.Reader) (*GatewayPayload, int, error)
-	Write(client io.Writer, opCode opcode.OpCode, payload json.RawMessage) (err error)
+	Write(client io.Writer, opCode opcode.Type, payload json.RawMessage) (err error)
 }
 
 // baseState should be discarded after the connection has closed.
@@ -120,7 +120,7 @@ func (c *baseState) Read(client io.Reader) (*GatewayPayload, int, error) {
 	return packet, len(data), nil
 }
 
-func (c *baseState) Write(client io.Writer, opCode opcode.OpCode, payload json.RawMessage) (err error) {
+func (c *baseState) Write(client io.Writer, opCode opcode.Type, payload json.RawMessage) (err error) {
 	if c.stateClosed.Load() {
 		return net.ErrClosed
 	}

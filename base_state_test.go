@@ -66,7 +66,7 @@ func TestClientState(t *testing.T) {
 			}
 
 			data := []byte(`"some test data"`)
-			op := opcode.EventHeartbeat
+			op := opcode.Heartbeat
 			if err := client.Write(mock, op, data); err != nil {
 				t.Fatal(err)
 			}
@@ -97,7 +97,7 @@ func TestClientState(t *testing.T) {
 			client := newState()
 			mock := &IOMockWithClosedConnection{}
 
-			err := client.Write(mock, opcode.EventIdentify, nil)
+			err := client.Write(mock, opcode.Identify, nil)
 			if err == nil {
 				t.Fatal("expected heartbeat to fail when writing to closed connection")
 			}
@@ -115,7 +115,7 @@ func TestClientState(t *testing.T) {
 			}
 
 			heartbeatInterval := int64(4500)
-			op := opcode.EventHello
+			op := opcode.Hello
 			// write the data to pipe
 			str := fmt.Sprintf(`{"op":%d,"d":{"heartbeat_interval":%d}}`, op, heartbeatInterval)
 			mock.readChan <- []byte(str)
@@ -272,7 +272,7 @@ func TestClientState(t *testing.T) {
 			}
 
 			shouldFail(client.WriteNormalClose(mock))
-			shouldFail(client.Write(mock, opcode.EventHeartbeat, []byte(`{}`)))
+			shouldFail(client.Write(mock, opcode.Heartbeat, []byte(`{}`)))
 
 			_, _, err := client.Read(mock)
 			shouldFail(err)
@@ -284,7 +284,7 @@ func TestClientState(t *testing.T) {
 	})
 }
 
-func extractIOMockWrittenMessage(mock *IOMock, expectedOPCode opcode.OpCode) (*GatewayPayload, error) {
+func extractIOMockWrittenMessage(mock *IOMock, expectedOPCode opcode.Type) (*GatewayPayload, error) {
 	payload := <-mock.writeChan
 
 	var packet *GatewayPayload
