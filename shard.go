@@ -93,10 +93,10 @@ func (i *ioWriteFlusher) Write(p []byte) (n int, err error) {
 }
 
 type Shard struct {
-	Conn       net.Conn
-	State      *GatewayState
-	handler    Handler
-	textWriter io.Writer
+	Conn        net.Conn
+	State       *GatewayState
+	handler     Handler
+	textWriter  io.Writer
 	closeWriter io.Writer
 }
 
