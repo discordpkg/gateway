@@ -252,6 +252,10 @@ func (gs *GatewayState) Read(client io.Reader) (*GatewayPayload, int, error) {
 
 func (gs *GatewayState) Process(pipe io.Reader, textWriter, closeWriter io.Writer) (payload *GatewayPayload, redundant bool, err error) {
 	payload, _, err = gs.Read(pipe)
+	if errors.Is(err, ErrSequenceNumberSkipped) {
+		_ = gs.WriteRestartClose(closeWriter)
+		return nil, true, err
+	}
 	if err != nil {
 		return nil, false, err
 	}

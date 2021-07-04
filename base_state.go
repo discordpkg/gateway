@@ -14,7 +14,6 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/andersfylling/discordgateway/event"
-	"github.com/andersfylling/discordgateway/log"
 	"github.com/andersfylling/discordgateway/opcode"
 )
 
@@ -25,6 +24,8 @@ type GatewayPayload struct {
 	EventName event.Type      `json:"t,omitempty"`
 	Outdated  bool            `json:"-"`
 }
+
+var ErrSequenceNumberSkipped = errors.New("the sequence number increased with more than 1, events lost")
 
 func newState() *baseState {
 	return newStateWithSeqNumber(0)
@@ -109,12 +110,11 @@ func (c *baseState) Read(client io.Reader) (*GatewayPayload, int, error) {
 
 	prevSeq := c.sequenceNumber.Load()
 	packet.Outdated = prevSeq >= packet.Seq
+	if packet.Seq-prevSeq > 1 {
+		return nil, 0, ErrSequenceNumberSkipped
+	}
 	if !packet.Outdated {
 		c.sequenceNumber.Store(packet.Seq)
-	}
-	if packet.Seq-prevSeq > 1 {
-		// TODO: disconnect and force resume?
-		log.Debug("sequence number jumped by ", packet.Seq-prevSeq)
 	}
 
 	return packet, len(data), nil
