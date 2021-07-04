@@ -143,6 +143,28 @@ func (s *Shard) Write(op opcode.OpCode, data []byte) error {
 	return s.State.Write(s.textWriter, op, data)
 }
 
+// Close closes the shard connection, session can not be resumed.
+func (s *Shard) Close() error {
+	if s.State.Closed() {
+		return net.ErrClosed
+	}
+
+	_ = s.State.WriteNormalClose(s.closeWriter)
+	_ = s.Conn.Close()
+	return nil
+}
+
+// CloseWithReconnectIntent closes the shard connection, but allows the session to be resumed later on.
+func (s *Shard) CloseWithReconnectIntent() error {
+	if s.State.Closed() {
+		return net.ErrClosed
+	}
+
+	_ = s.State.WriteRestartClose(s.closeWriter)
+	_ = s.Conn.Close()
+	return nil
+}
+
 func (s *Shard) writer(op ws.OpCode) io.Writer {
 	return &ioWriteFlusher{wsutil.NewWriter(s.Conn, ws.StateClientSide, op)}
 }
