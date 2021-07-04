@@ -104,12 +104,11 @@ func listen(logger *logrus.Logger, token string) {
 	}
 
 reconnect:
-	conn, err := shard.Dial(context.Background(), "wss://gateway.discord.gg/?v=9&encoding=json")
-	if err != nil {
+	if _, err = shard.Dial(context.Background(), "wss://gateway.discord.gg/?v=9&encoding=json"); err != nil {
 		logger.Fatalf("failed to open websocket connection. %w", err)
 	}
 
-	if op, err := shard.EventLoop(context.Background(), conn); err != nil {
+	if op, err := shard.EventLoop(context.Background()); err != nil {
 		var discordErr *discordgateway.CloseError
 		if errors.As(err, &discordErr) {
 			logger.Infof("event loop exited with close code: %d", discordErr.Code)
@@ -131,7 +130,7 @@ reconnect:
 				logger.Errorf("unhandled close error, with discord op code(%d): %d", op, discordErr.Code)
 			}
 		}
-		var errClosed *discordgateway.ErrClosed
+		var errClosed *discordgateway.CloseError
 		if errors.As(err, &errClosed) || errors.Is(err, net.ErrClosed) || errors.Is(err, io.ErrClosedPipe) {
 			logger.Debug("errClosed - creating resume client")
 			if !shard.State.HaveSessionID() {

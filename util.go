@@ -1,7 +1,7 @@
 package discordgateway
 
-func ClientShard(guildID uint64, totalNumberOfShards uint) (shardID uint) {
-	createdUnix := guildID >> 22
+func DeriveShardID(snowflake uint64, totalNumberOfShards uint) ShardID {
+	createdUnix := snowflake >> 22
 	groups := uint64(totalNumberOfShards)
-	return uint(createdUnix % groups)
+	return ShardID(createdUnix % groups)
 }

@@ -21,13 +21,13 @@ import (
 	"github.com/andersfylling/discordgateway/opcode"
 )
 
-// ErrClosed https://tip.golang.org/pkg/net/#ErrClosed
-type ErrClosed struct {
-	err error
+type FrameError struct {
+	Unwanted bool
+	Err      error
 }
 
-func (e ErrClosed) Error() string {
-	return e.err.Error()
+func (e *FrameError) Error() string {
+	return e.Err.Error()
 }
 
 type ShardConfig struct {
@@ -79,10 +79,23 @@ func NewShard(handler Handler, conf *ShardConfig) (*Shard, error) {
 	return shard, nil
 }
 
+type ioWriteFlusher struct {
+	writer *wsutil.Writer
+}
+
+func (i *ioWriteFlusher) Write(p []byte) (n int, err error) {
+	if n, err = i.writer.Write(p); err != nil {
+		return n, err
+	}
+	return n, i.writer.Flush()
+}
+
 type Shard struct {
-	State      *GatewayState
-	handler    Handler
-	textWriter IOFlushWriter
+	Conn        net.Conn
+	State       *GatewayState
+	handler     Handler
+	textWriter  io.Writer
+	closeWriter io.Writer
 }
 
 // Dial sets up the websocket connection before identifying with the gateway.
@@ -120,7 +133,9 @@ func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn
 		}
 	}
 
-	s.textWriter = s.writer(conn, ws.OpText)
+	s.Conn = conn
+	s.textWriter = s.writer(ws.OpText)
+	s.closeWriter = s.writer(ws.OpClose)
 	return conn, nil
 }
 
@@ -128,13 +143,35 @@ func (s *Shard) Write(op opcode.OpCode, data []byte) error {
 	return s.State.Write(s.textWriter, op, data)
 }
 
-func (s *Shard) writer(conn net.Conn, op ws.OpCode) IOFlushWriter {
-	return wsutil.NewWriter(conn, ws.StateClientSide, op)
+// Close closes the shard connection, session can not be resumed.
+func (s *Shard) Close() error {
+	if s.State.Closed() {
+		return net.ErrClosed
+	}
+
+	_ = s.State.WriteNormalClose(s.closeWriter)
+	_ = s.Conn.Close()
+	return nil
 }
 
-func writeClose(closer func(IOFlushWriter) error, conn net.Conn, reason string) error {
+// CloseWithReconnectIntent closes the shard connection, but allows the session to be resumed later on.
+func (s *Shard) CloseWithReconnectIntent() error {
+	if s.State.Closed() {
+		return net.ErrClosed
+	}
+
+	_ = s.State.WriteRestartClose(s.closeWriter)
+	_ = s.Conn.Close()
+	return nil
+}
+
+func (s *Shard) writer(op ws.OpCode) io.Writer {
+	return &ioWriteFlusher{wsutil.NewWriter(s.Conn, ws.StateClientSide, op)}
+}
+
+func writeClose(closer func(io.Writer) error, conn net.Conn, reason string) error {
 	log.Info("shard sent close frame: ", reason)
-	closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)
+	closeWriter := &ioWriteFlusher{wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)}
 	if err := closer(closeWriter); err != nil && !errors.Is(err, net.ErrClosed) {
 		// if the connection is already closed, it's not a big deal that we can't write the close code
 		return fmt.Errorf("failed to write close frame. %w", err)
@@ -142,7 +179,7 @@ func writeClose(closer func(IOFlushWriter) error, conn net.Conn, reason string) 
 	return nil
 }
 
-func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, error) {
+func (s *Shard) EventLoop(ctx context.Context) (opcode.OpCode, error) {
 	defer func() {
 		if s.State.HaveSessionID() {
 			s.State = &GatewayState{
@@ -165,17 +202,14 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 			return
 		}
 
-		if err := writeClose(s.State.WriteRestartClose, conn, "program shutdown"); err != nil {
-			log.Error("failed to close connection properly: ", err)
-		}
-		_ = conn.Close()
+		_ = s.State.WriteRestartClose(s.closeWriter)
+		_ = s.Conn.Close()
 	}
 	defer closeConnection()
 
-	writer := s.writer(conn, ws.OpText)
-	controlHandler := wsutil.ControlFrameHandler(conn, ws.StateClientSide)
+	controlHandler := wsutil.ControlFrameHandler(s.Conn, ws.StateClientSide)
 	rd := wsutil.Reader{
-		Source:          conn,
+		Source:          s.Conn,
 		State:           ws.StateClientSide,
 		CheckUTF8:       true,
 		SkipHeaderCheck: false,
@@ -186,50 +220,49 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 	for {
 		hdr, err := rd.NextFrame()
 		if err != nil {
-			_ = conn.Close()
+			_ = s.Conn.Close()
 			// check for the "historical" i/o timeout message
 			// net.go@timeoutErr # ~583 at 2020-12-25
 			const ioTimeoutMessage = "i/o timeout"
-			if strings.Contains(err.Error(), ioTimeoutMessage) && forcedReadTimeout.Load() {
-				return opcode.Invalid, fmt.Errorf("closed connection due to timeout. %w", err)
+			errMsg := err.Error()
+			if strings.Contains(errMsg, ioTimeoutMessage) && forcedReadTimeout.Load() {
+				return opcode.Invalid, &FrameError{Err: net.ErrClosed}
 			} else {
-				closedConnection := strings.Contains(err.Error(), "use of closed network connection")
-				closedConnection = closedConnection || strings.Contains(err.Error(), "use of closed connection")
+				closedConnection := strings.Contains(errMsg, "use of closed network connection")
+				closedConnection = closedConnection || strings.Contains(errMsg, "use of closed connection")
 				if closedConnection || errors.Is(err, io.EOF) {
-					return opcode.Invalid, &ErrClosed{err}
+					return opcode.Invalid, &FrameError{Err: net.ErrClosed}
 				} else {
-					return opcode.Invalid, fmt.Errorf("failed to load next frame. %w", err)
+					return opcode.Invalid, &FrameError{Err: err}
 				}
 			}
 		}
 		if hdr.OpCode.IsControl() {
+			// discord does send close frames so these must be handled
 			if err := controlHandler(hdr, &rd); err != nil {
-				var normalClose wsutil.ClosedError
-				if errors.As(err, &normalClose) {
+				var errClose wsutil.ClosedError
+				if errors.As(err, &errClose) {
 					if forcedReadTimeout.Load() {
-						_ = conn.Close()
+						_ = s.Conn.Close()
+						return opcode.Invalid, &FrameError{Err: net.ErrClosed}
 					}
-					switch normalClose.Code {
+					switch errClose.Code {
 					case 1001, 4000: // allow resume
 					default:
-						closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)
-						s.State.InvalidateSession(closeWriter)
+						s.State.InvalidateSession(s.closeWriter)
 					}
-					if normalClose.Code == 1000 {
-						return opcode.Invalid, NormalCloseErr
-					}
-					return opcode.Invalid, &CloseError{Code: uint(normalClose.Code), Reason: normalClose.Reason}
+					return opcode.Invalid, &CloseError{Code: uint(errClose.Code), Reason: errClose.Reason}
 				} else {
-					return opcode.Invalid, fmt.Errorf("failed to handle control frame. %w", err)
+					return opcode.Invalid, &FrameError{Err: err}
 				}
 			}
 			continue
 		}
 		if hdr.OpCode&ws.OpText == 0 {
+			// discord only uses text, even for heartbeats / ping/pong frames
 			if err := rd.Discard(); err != nil {
-				return opcode.Invalid, fmt.Errorf("failed to discard unwanted frame. %w", err)
+				return opcode.Invalid, &FrameError{Unwanted: true, Err: err}
 			}
-			log.Debug(fmt.Sprintf("discarded websocket frame due to wrong op: %s", string(hdr.OpCode)))
 			continue
 		}
 
@@ -241,7 +274,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 			return opcode.Invalid, errors.New("no data was actually read. Byte slice payload had a length of 0")
 		}
 
-		redundant, err := s.State.DemultiplexEvent(payload, writer)
+		redundant, err := s.State.DemultiplexEvent(payload, s.textWriter, s.closeWriter)
 		if redundant {
 			continue
 		}
@@ -254,9 +287,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 			if s.handler != nil {
 				s.handler(s.State.conf.ShardID, payload.EventName, payload.Data)
 			}
-		case opcode.EventInvalidSession:
-			closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)
-			s.State.InvalidateSession(closeWriter)
+		case opcode.EventInvalidSession, opcode.EventReconnect:
 			return payload.Op, nil
 		case opcode.EventHello:
 			var hello *GatewayHello
@@ -266,11 +297,11 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 
 			pulser.gotAck.Store(true)
 			pulser.interval = time.Duration(hello.HeartbeatIntervalMilli) * time.Millisecond
-			pulser.conn = conn
+			pulser.conn = s.Conn
 			pulser.shard = s.State
 			pulser.forcedReadTimeout = &forcedReadTimeout
 
-			go pulser.pulser(ctx, life, writer)
+			go pulser.pulser(ctx, life, s.textWriter)
 		case opcode.EventHeartbeatACK:
 			pulser.gotAck.Store(true)
 		default:
@@ -288,7 +319,7 @@ type heart struct {
 	gotAck            atomic.Bool
 }
 
-func (h *heart) pulser(ctx context.Context, eventLoopCtx context.Context, writer IOFlushWriter) {
+func (h *heart) pulser(ctx context.Context, eventLoopCtx context.Context, writer io.Writer) {
 	// shard <-> pulser
 	ticker := time.NewTicker(h.interval)
 	defer ticker.Stop()

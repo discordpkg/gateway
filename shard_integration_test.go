@@ -67,13 +67,14 @@ func TestShard(t *testing.T) {
 		t.Fatal("failed to create shard", err)
 	}
 
-	conn, err := shard.Dial(ctx, "wss://gateway.discord.gg/?v=9&encoding=json")
-	if err != nil {
+	if _, err = shard.Dial(ctx, "wss://gateway.discord.gg/?v=9&encoding=json"); err != nil {
 		t.Fatal("failed to dial")
 	}
 
-	op, err := shard.EventLoop(ctx, conn)
-	if err != nil && !(errors.Is(err, context.Canceled) || errors.Is(err, NormalCloseErr)) {
+	op, err := shard.EventLoop(ctx)
+	var closeErr *CloseError
+	if errors.As(err, &closeErr) {
+	} else if err != nil && !(errors.Is(err, context.Canceled)) {
 		t.Errorf("expected error to be context cancellation / normal close. Got %s", err.Error())
 	}
 	if op != opcode.Invalid {

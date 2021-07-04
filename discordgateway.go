@@ -12,7 +12,7 @@ import (
 
 type RawMessage = json.RawMessage
 
-type ShardID uint16
+type ShardID uint
 
 type Handler func(ShardID, event.Type, RawMessage)
 

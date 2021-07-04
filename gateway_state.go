@@ -18,8 +18,6 @@ import (
 	"github.com/andersfylling/discordgateway/opcode"
 )
 
-var NormalCloseErr = &CloseError{Code: 1000, Reason: "client is going away"}
-
 type CloseError struct {
 	Code   uint
 	Reason string
@@ -216,7 +214,7 @@ func (gs *GatewayState) isSendOpCode(op opcode.OpCode) bool {
 	return false
 }
 
-func (gs *GatewayState) Write(client IOFlushWriter, op opcode.OpCode, payload json.RawMessage) (err error) {
+func (gs *GatewayState) Write(client io.Writer, op opcode.OpCode, payload json.RawMessage) (err error) {
 	if !gs.isSendOpCode(op) {
 		return errors.New(fmt.Sprintf("operation code %d is not for outgoing payloads", op))
 	}
@@ -234,7 +232,7 @@ func (gs *GatewayState) Write(client IOFlushWriter, op opcode.OpCode, payload js
 	return gs.state.Write(client, op, payload)
 }
 
-func (gs *GatewayState) Read(client IOReader) (*GatewayPayload, int, error) {
+func (gs *GatewayState) Read(client io.Reader) (*GatewayPayload, int, error) {
 	payload, length, err := gs.state.Read(client)
 	if err != nil {
 		return nil, 0, err
@@ -252,14 +250,14 @@ func (gs *GatewayState) Read(client IOReader) (*GatewayPayload, int, error) {
 }
 
 // Heartbeat Close method may be used if Write fails
-func (gs *GatewayState) Heartbeat(client IOFlushWriter) error {
+func (gs *GatewayState) Heartbeat(client io.Writer) error {
 	seq := gs.SequenceNumber()
 	seqStr := strconv.FormatInt(seq, 10)
 	return gs.Write(client, opcode.EventHeartbeat, []byte(seqStr))
 }
 
 // Identify Close method may be used if Write fails
-func (gs *GatewayState) Identify(client IOFlushWriter) error {
+func (gs *GatewayState) Identify(client io.Writer) error {
 	identifyPacket := &GatewayIdentify{
 		BotToken:       gs.conf.BotToken,
 		Properties:     &gs.conf.Properties,
@@ -284,7 +282,7 @@ func (gs *GatewayState) Identify(client IOFlushWriter) error {
 }
 
 // Resume Close method may be used if Write fails
-func (gs *GatewayState) Resume(client IOFlushWriter) error {
+func (gs *GatewayState) Resume(client io.Writer) error {
 	if !gs.HaveSessionID() {
 		return errors.New("missing session id, can not resume connection")
 	}
@@ -314,7 +312,7 @@ func (gs *GatewayState) HaveIdentified() bool {
 	return gs.sentResumeOrIdentify.Load()
 }
 
-func (gs *GatewayState) InvalidateSession(closeWriter IOFlushCloseWriter) {
+func (gs *GatewayState) InvalidateSession(closeWriter io.Writer) {
 	if err := gs.WriteNormalClose(closeWriter); err != nil && !errors.Is(err, net.ErrClosed) {
 		// TODO: so what?
 	}
@@ -322,10 +320,10 @@ func (gs *GatewayState) InvalidateSession(closeWriter IOFlushCloseWriter) {
 	//gs.state = nil
 }
 
-func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, writer IOFlushWriter) (redundant bool, err error) {
+func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, textWriter, closeWriter io.Writer) (redundant bool, err error) {
 	switch payload.Op {
 	case opcode.EventHeartbeat:
-		if err := gs.Heartbeat(writer); err != nil {
+		if err := gs.Heartbeat(textWriter); err != nil {
 			return false, fmt.Errorf("discord requested heartbeat, but was unable to send one. %w", err)
 		}
 	case opcode.EventHello:
@@ -333,24 +331,25 @@ func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, writer IOFlush
 			return true, nil
 		}
 		if gs.HaveSessionID() {
-			if err := gs.Resume(writer); err != nil {
+			if err := gs.Resume(textWriter); err != nil {
 				return false, fmt.Errorf("sending resume failed. closing. %w", err)
 			}
 		} else {
-			if err := gs.Identify(writer); err != nil {
+			if err := gs.Identify(textWriter); err != nil {
 				return false, fmt.Errorf("identify failed. closing. %w", err)
 			}
 		}
-		return false, nil
 	case opcode.EventDispatch:
-		if _, whitelisted := gs.whitelist[payload.EventName]; whitelisted {
-			return false, nil
+		if _, whitelisted := gs.whitelist[payload.EventName]; !whitelisted {
+			return true, nil
 		}
-	case opcode.EventHeartbeatACK, opcode.EventInvalidSession, opcode.EventReconnect:
-		return false, nil
+	case opcode.EventInvalidSession:
+		gs.InvalidateSession(closeWriter)
+	case opcode.EventReconnect:
+		_ = gs.WriteRestartClose(closeWriter)
 	default:
 		// TODO: log new unhandled operation code
 	}
 
-	return true, nil
+	return false, nil
 }
