@@ -26,12 +26,12 @@ type GatewayPayload struct {
 	Outdated  bool            `json:"-"`
 }
 
-func newState() *clientState {
+func newState() *baseState {
 	return newStateWithSeqNumber(0)
 }
 
-func newStateWithSeqNumber(seq int64) *clientState {
-	st := &clientState{}
+func newStateWithSeqNumber(seq int64) *baseState {
+	st := &baseState{}
 	st.sequenceNumber.Store(seq)
 	return st
 }
@@ -45,30 +45,32 @@ type state interface {
 	Write(client io.Writer, opCode opcode.OpCode, payload json.RawMessage) (err error)
 }
 
-// clientState should be discarded after the connection has closed.
+// baseState should be discarded after the connection has closed.
 // reconnect must create a new shard instance.
-type clientState struct {
+//
+// This state works for both voice and gateway.
+type baseState struct {
 	sequenceNumber atomic.Int64
 	stateClosed    atomic.Bool
 }
 
-func (c *clientState) SequenceNumber() int64 {
+func (c *baseState) SequenceNumber() int64 {
 	return c.sequenceNumber.Load()
 }
 
-func (c *clientState) Closed() bool {
+func (c *baseState) Closed() bool {
 	return c.stateClosed.Load()
 }
 
-func (c *clientState) WriteNormalClose(client io.Writer) error {
+func (c *baseState) WriteNormalClose(client io.Writer) error {
 	return c.writeClose(client, 1000)
 }
 
-func (c *clientState) WriteRestartClose(client io.Writer) error {
+func (c *baseState) WriteRestartClose(client io.Writer) error {
 	return c.writeClose(client, 1012)
 }
 
-func (c *clientState) writeClose(client io.Writer, code uint16) error {
+func (c *baseState) writeClose(client io.Writer, code uint16) error {
 	writeIfOpen := func() error {
 		if c.stateClosed.CAS(false, true) {
 			closeCodeBuf := make([]byte, 2)
@@ -90,7 +92,7 @@ func (c *clientState) writeClose(client io.Writer, code uint16) error {
 }
 
 // Read until a new data frame with updated info comes in, or fails.
-func (c *clientState) Read(client io.Reader) (*GatewayPayload, int, error) {
+func (c *baseState) Read(client io.Reader) (*GatewayPayload, int, error) {
 	if c.stateClosed.Load() {
 		return nil, 0, net.ErrClosed
 	}
@@ -118,7 +120,7 @@ func (c *clientState) Read(client io.Reader) (*GatewayPayload, int, error) {
 	return packet, len(data), nil
 }
 
-func (c *clientState) Write(client io.Writer, opCode opcode.OpCode, payload json.RawMessage) (err error) {
+func (c *baseState) Write(client io.Writer, opCode opcode.OpCode, payload json.RawMessage) (err error) {
 	if c.stateClosed.Load() {
 		return net.ErrClosed
 	}
