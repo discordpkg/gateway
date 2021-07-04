@@ -19,3 +19,8 @@ Just like the go std packages, the error syntax is:
  - Err* for variables
  - *Error for struct implementations
 
+## Rate Limiting Identify
+Given that identify may have to be shared across shards, the rate limiter must be inject-able.
+
+This extends to microservice support; I've kept the interface as a simple "take" design. The method takes a shard id and returns a bool to signify if the shard can identify. 
+The return value does not seem to useful as of now, please open a issue or PR with any ideas/feedback you may have.
