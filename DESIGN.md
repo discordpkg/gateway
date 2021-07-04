@@ -8,3 +8,9 @@ Commands can be split into high priority and low priority; high priority is any 
 The current system reserves around 5 command calls for every burst (120 commands/60s), for heartbeats. 
 The system assumes that you've dispatched high priority commands to setup the connection, leaving only heartbeats to keep the connection alive.
 However, it does mean that there will always be up to 5 wasted commands per burst. Implementing a dynamic high/low-priority queue would squeeze out any "lost" command calls, and is a welcomed PR.
+
+## Error handling
+Just like the go std packages, the error syntax is:
+ - Err* for variables
+ - *Error for struct implementations
+
