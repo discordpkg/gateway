@@ -8,7 +8,6 @@ import (
 	"github.com/andersfylling/discordgateway/intent"
 	"io"
 	"net"
-	"net/url"
 	"strings"
 	"time"
 
@@ -105,22 +104,12 @@ type Shard struct {
 //  "wss://gateway.discord.gg/?v=9"                 => invalid
 //  "wss://gateway.discord.gg/?v=9&encoding=json"   => valid
 func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn, err error) {
-	u, urlErr := url.Parse(URLString)
-	if urlErr != nil {
+	URLString, err = ValidateDialURL(URLString)
+	if err != nil {
 		return nil, err
 	}
 
-	if u.Scheme != "ws" && u.Scheme != "wss" {
-		return nil, errors.New("url scheme was not websocket (ws nor wss)")
-	}
-	if v := u.Query().Get("v"); v != "9" && v != "8" {
-		return nil, errors.New("only discord api version [8, 9] is supported")
-	}
-	if encoding := u.Query().Get("encoding"); encoding != "json" {
-		return nil, errors.New("currently, only supports json encoding of discord data")
-	}
-
-	conn, reader, _, err := ws.Dial(ctx, u.String())
+	conn, reader, _, err := ws.Dial(ctx, URLString)
 	if err != nil {
 		return nil, err
 	}
