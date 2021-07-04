@@ -247,13 +247,8 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.Type, error) {
 						_ = s.Conn.Close()
 						return opcode.Invalid, &FrameError{Err: net.ErrClosed}
 					}
-					closeCode := closecode.Type(errClose.Code)
-					switch closeCode {
-					case closecode.ClientReconnecting, closecode.UnknownError: // allow resume
-					default:
-						s.State.InvalidateSession(s.closeWriter)
-					}
-					return opcode.Invalid, &CloseError{Code: closeCode, Reason: errClose.Reason}
+					err = s.State.DemultiplexCloseCode(closecode.Type(errClose.Code), errClose.Reason, s.closeWriter)
+					return opcode.Invalid, err
 				} else {
 					return opcode.Invalid, &FrameError{Err: err}
 				}

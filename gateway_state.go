@@ -364,3 +364,13 @@ func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, textWriter, cl
 
 	return false, nil
 }
+
+func (gs *GatewayState) DemultiplexCloseCode(code closecode.Type, reason string, closeWriter io.Writer) error {
+	switch code {
+	case closecode.ClientReconnecting, closecode.UnknownError:
+		// allow resume
+	default:
+		gs.InvalidateSession(closeWriter)
+	}
+	return &CloseError{Code: code, Reason: reason}
+}
