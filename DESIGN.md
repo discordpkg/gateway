@@ -1,3 +1,6 @@
+## States
+All websocket communication, read and writes, should flow through a state object (eg. gateway state) to ensure valid program behaviour. Once a connection terminates/closes for any reason, the state is also marked closed and becomes unusable. You must create a new state, even for resumes. This makes the lifetime of internal states easier to reason about, and no old configuration/behaviour is leaked into a new state.
+
 ## Flush & Write
 Writing to a internal buffer to later call flush, is often seen for high throughput implementations. Given that discord rate limits any dispatched websocket message to 120/60s or ~2/1s, the throughput/write frequency is not high enough to merit a "write & flush" system. 
 Instead, I want to deal with any errors as soon as possible. Immediately processing any dispatch errors as they happen, rather later at some point.
