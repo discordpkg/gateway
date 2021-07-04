@@ -9,6 +9,11 @@ The current system reserves around 5 command calls for every burst (120 commands
 The system assumes that you've dispatched high priority commands to setup the connection, leaving only heartbeats to keep the connection alive.
 However, it does mean that there will always be up to 5 wasted commands per burst. Implementing a dynamic high/low-priority queue would squeeze out any "lost" command calls, and is a welcomed PR.
 
+## Dial & net.Conn
+> Shard implementation is optional, but since it's part of the code base I'll still discuss it here.
+
+The Dial method returns the net.Conn (ws connection) to allow you to create your own event loop system. It is not required to store the connection anywhere as the shard keeps a reference when Dial succeeds.
+
 ## Error handling
 Just like the go std packages, the error syntax is:
  - Err* for variables

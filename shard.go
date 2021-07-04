@@ -93,6 +93,7 @@ func (i *ioWriteFlusher) Write(p []byte) (n int, err error) {
 }
 
 type Shard struct {
+	Conn       net.Conn
 	State      *GatewayState
 	handler    Handler
 	textWriter io.Writer
@@ -133,7 +134,8 @@ func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn
 		}
 	}
 
-	s.textWriter = s.writer(conn, ws.OpText)
+	s.Conn = conn
+	s.textWriter = s.writer(ws.OpText)
 	return conn, nil
 }
 
@@ -141,8 +143,8 @@ func (s *Shard) Write(op opcode.OpCode, data []byte) error {
 	return s.State.Write(s.textWriter, op, data)
 }
 
-func (s *Shard) writer(conn net.Conn, op ws.OpCode) io.Writer {
-	return &ioWriteFlusher{wsutil.NewWriter(conn, ws.StateClientSide, op)}
+func (s *Shard) writer(op ws.OpCode) io.Writer {
+	return &ioWriteFlusher{wsutil.NewWriter(s.Conn, ws.StateClientSide, op)}
 }
 
 func writeClose(closer func(io.Writer) error, conn net.Conn, reason string) error {
@@ -155,7 +157,7 @@ func writeClose(closer func(io.Writer) error, conn net.Conn, reason string) erro
 	return nil
 }
 
-func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, error) {
+func (s *Shard) EventLoop(ctx context.Context) (opcode.OpCode, error) {
 	defer func() {
 		if s.State.HaveSessionID() {
 			s.State = &GatewayState{
@@ -178,17 +180,17 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 			return
 		}
 
-		if err := writeClose(s.State.WriteRestartClose, conn, "program shutdown"); err != nil {
+		if err := writeClose(s.State.WriteRestartClose, s.Conn, "program shutdown"); err != nil {
 			log.Error("failed to close connection properly: ", err)
 		}
-		_ = conn.Close()
+		_ = s.Conn.Close()
 	}
 	defer closeConnection()
 
-	writer := s.writer(conn, ws.OpText)
-	controlHandler := wsutil.ControlFrameHandler(conn, ws.StateClientSide)
+	writer := s.writer(ws.OpText)
+	controlHandler := wsutil.ControlFrameHandler(s.Conn, ws.StateClientSide)
 	rd := wsutil.Reader{
-		Source:          conn,
+		Source:          s.Conn,
 		State:           ws.StateClientSide,
 		CheckUTF8:       true,
 		SkipHeaderCheck: false,
@@ -199,7 +201,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 	for {
 		hdr, err := rd.NextFrame()
 		if err != nil {
-			_ = conn.Close()
+			_ = s.Conn.Close()
 			// check for the "historical" i/o timeout message
 			// net.go@timeoutErr # ~583 at 2020-12-25
 			const ioTimeoutMessage = "i/o timeout"
@@ -221,12 +223,12 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 				var normalClose wsutil.ClosedError
 				if errors.As(err, &normalClose) {
 					if forcedReadTimeout.Load() {
-						_ = conn.Close()
+						_ = s.Conn.Close()
 					}
 					switch normalClose.Code {
 					case 1001, 4000: // allow resume
 					default:
-						closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)
+						closeWriter := wsutil.NewWriter(s.Conn, ws.StateClientSide, ws.OpClose)
 						s.State.InvalidateSession(closeWriter)
 					}
 					if normalClose.Code == 1000 {
@@ -269,7 +271,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 				s.handler(s.State.conf.ShardID, payload.EventName, payload.Data)
 			}
 		case opcode.EventInvalidSession:
-			closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)
+			closeWriter := wsutil.NewWriter(s.Conn, ws.StateClientSide, ws.OpClose)
 			s.State.InvalidateSession(closeWriter)
 			return payload.Op, nil
 		case opcode.EventHello:
@@ -280,7 +282,7 @@ func (s *Shard) EventLoop(ctx context.Context, conn net.Conn) (opcode.OpCode, er
 
 			pulser.gotAck.Store(true)
 			pulser.interval = time.Duration(hello.HeartbeatIntervalMilli) * time.Millisecond
-			pulser.conn = conn
+			pulser.conn = s.Conn
 			pulser.shard = s.State
 			pulser.forcedReadTimeout = &forcedReadTimeout
 
