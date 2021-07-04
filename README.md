@@ -96,8 +96,7 @@ reconnect:
 				log.Error(fmt.Errorf("unhandled close error, with discord op code(%d): %d", op, discordErr.Code))
 			}
 		}
-		var errClosed *discordgateway.ErrClosed
-		if errors.As(err, &errClosed) || errors.Is(err, net.ErrClosed) || errors.Is(err, io.ErrClosedPipe) {
+		if errors.Is(err, net.ErrClosed) {
 			log.Debug("connection closed/lost .. will try to reconnect")
 			goto reconnect
 		}
@@ -147,7 +146,7 @@ func main() {
 	}
 
 	req := `{"guild_id":"23423","limit":0,"query":""}`
-	if err := shard.Write(opcode.EventRequestGuildMembers, []byte(req)); err != nil {
+	if err := shard.Write(opcode.RequestGuildMembers, []byte(req)); err != nil {
 		log.Fatal("failed to request guild members", err)
     }
     
@@ -174,7 +173,11 @@ It only reads incoming events and waits to crash. Once any alerts such as warnin
 ## Support
 
  - [ ] Voice
+   - [X] operation codes
+   - [X] close codes
  - [x] Gateway
+   - [X] operation codes
+   - [X] close codes
    - [X] Intents
    - [x] Events
    - [ ] Commands
