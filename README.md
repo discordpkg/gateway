@@ -21,7 +21,7 @@
 
 # Ideology
 
-Discord is a mess. Consistency is a luxury. And simplicity is somewhere over here or there.
+[//]: # "Discord is a mess. Consistency is a luxury. And simplicity is somewhere over here or there."
 
 This project aims to normalize some namings, make interacting more intuitive and development a smoother experience.
 
@@ -57,7 +57,6 @@ import (
 	"github.com/andersfylling/discordgateway"
 	"github.com/andersfylling/discordgateway/event"
 	"github.com/andersfylling/discordgateway/log"
-	"io"
 	"net"
 	"os"
 )
@@ -145,12 +144,13 @@ func main() {
 		log.Fatal("failed to open websocket connection. ", err)
 	}
 
+   // ...
+   
 	req := `{"guild_id":"23423","limit":0,"query":""}`
 	if err := shard.Write(opcode.RequestGuildMembers, []byte(req)); err != nil {
 		log.Fatal("failed to request guild members", err)
     }
     
-    // ...
 }
 ```
 
