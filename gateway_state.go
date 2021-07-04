@@ -67,11 +67,11 @@ func (c *channelCloser) Close() error {
 }
 
 func NewCommandRateLimiter() (<-chan int, io.Closer) {
-	burstSize := 120
+	burstSize, duration := 120, 60*time.Second
 	burstSize -= 4 // reserve 4 calls for heartbeat
 	burstSize -= 1 // reserve one call, in case discord requests a heartbeat
 
-	return NewRateLimiter(burstSize, 60*time.Second)
+	return NewRateLimiter(burstSize, duration)
 }
 
 func NewIdentifyRateLimiter() (<-chan int, io.Closer) {
