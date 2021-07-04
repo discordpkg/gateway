@@ -21,7 +21,7 @@
 
 # Ideology
 
-Discord is a mess. Consistency is a luxury. And simplicity is somewhere over there or here.
+Discord is a mess. Consistency is a luxury. And simplicity is somewhere over here or there.
 
 This project aims to normalize some namings, make interacting more intuitive and development a smoother experience.
 
