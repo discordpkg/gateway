@@ -341,24 +341,17 @@ func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, textWriter, cl
 				return false, fmt.Errorf("identify failed. closing. %w", err)
 			}
 		}
-		return false, nil
 	case opcode.EventDispatch:
-		if _, whitelisted := gs.whitelist[payload.EventName]; whitelisted {
-			return false, nil
+		if _, whitelisted := gs.whitelist[payload.EventName]; !whitelisted {
+			return true, nil
 		}
 	case  opcode.EventInvalidSession:
 		gs.InvalidateSession(closeWriter)
-		return false, nil
 	case opcode.EventReconnect:
 		_ = gs.WriteRestartClose(closeWriter)
-		return false, nil
-	case opcode.EventHeartbeatACK:
-		return false, nil
 	default:
 		// TODO: log new unhandled operation code
-		//  at least anything that hasn't been implemented should not be considered redundant
-		return false, nil
 	}
 
-	return true, nil
+	return false, nil
 }
