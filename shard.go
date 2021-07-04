@@ -81,10 +81,21 @@ func NewShard(handler Handler, conf *ShardConfig) (*Shard, error) {
 	return shard, nil
 }
 
+type ioWriteFlusher struct {
+	writer *wsutil.Writer
+}
+
+func (i *ioWriteFlusher) Write(p []byte) (n int, err error) {
+	if n, err = i.writer.Write(p); err != nil {
+		return n, err
+	}
+	return n, i.writer.Flush()
+}
+
 type Shard struct {
 	State      *GatewayState
 	handler    Handler
-	textWriter IOFlushWriter
+	textWriter io.Writer
 }
 
 // Dial sets up the websocket connection before identifying with the gateway.
@@ -130,13 +141,13 @@ func (s *Shard) Write(op opcode.OpCode, data []byte) error {
 	return s.State.Write(s.textWriter, op, data)
 }
 
-func (s *Shard) writer(conn net.Conn, op ws.OpCode) IOFlushWriter {
-	return wsutil.NewWriter(conn, ws.StateClientSide, op)
+func (s *Shard) writer(conn net.Conn, op ws.OpCode) io.Writer {
+	return &ioWriteFlusher{wsutil.NewWriter(conn, ws.StateClientSide, op)}
 }
 
-func writeClose(closer func(IOFlushWriter) error, conn net.Conn, reason string) error {
+func writeClose(closer func(io.Writer) error, conn net.Conn, reason string) error {
 	log.Info("shard sent close frame: ", reason)
-	closeWriter := wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)
+	closeWriter := &ioWriteFlusher{wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)}
 	if err := closer(closeWriter); err != nil && !errors.Is(err, net.ErrClosed) {
 		// if the connection is already closed, it's not a big deal that we can't write the close code
 		return fmt.Errorf("failed to write close frame. %w", err)
@@ -291,7 +302,7 @@ type heart struct {
 	gotAck            atomic.Bool
 }
 
-func (h *heart) pulser(ctx context.Context, eventLoopCtx context.Context, writer IOFlushWriter) {
+func (h *heart) pulser(ctx context.Context, eventLoopCtx context.Context, writer io.Writer) {
 	// shard <-> pulser
 	ticker := time.NewTicker(h.interval)
 	defer ticker.Stop()

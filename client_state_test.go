@@ -24,47 +24,29 @@ type IOMock struct {
 	readChan  chan []byte
 }
 
-var _ IOFlushReadWriter = &IOMock{}
+var _ io.Writer = &IOMock{}
+var _ io.Reader = &IOMock{}
 
 func (m *IOMock) Close() error {
 	m.closed = true
 	return nil
 }
-func (m *IOMock) Flush() error {
-	if len(m.writeBuf) > 0 {
-		m.writeChan <- m.writeBuf
-		m.writeBuf = nil
-		return nil
-	} else {
-		return io.EOF
-	}
-}
 func (m *IOMock) Write(p []byte) (n int, err error) {
-	m.writeBuf = append(m.writeBuf, p...)
+	m.writeChan <- p
 	return len(p), nil
 }
 func (m *IOMock) Read(p []byte) (n int, err error) {
-	if m.readBuf == nil {
-		select {
-		case msg, ok := <-m.readChan:
-			if !ok {
-				return 0, net.ErrClosed
-			}
-			m.readBuf = bytes.NewReader(msg)
-		case <-time.After(time.Millisecond):
-			return 0, io.EOF
+	select {
+	case msg, ok := <-m.readChan:
+		if !ok {
+			return 0, net.ErrClosed
 		}
+		m.readBuf = bytes.NewReader(msg)
+	case <-time.After(time.Millisecond):
+		return 0, io.EOF
 	}
 
-	n, err = m.readBuf.Read(p)
-	if err != nil {
-		return 0, err
-	}
-
-	if n == 0 || len(p) > n {
-		m.readBuf = nil
-	}
-	return n, nil
+	return m.readBuf.Read(p)
 }
 
 type IOMockWithClosedConnection struct {

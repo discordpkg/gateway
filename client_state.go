@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"strings"
@@ -38,10 +39,10 @@ func newStateWithSeqNumber(seq int64) *clientState {
 type state interface {
 	SequenceNumber() int64
 	Closed() bool
-	WriteNormalClose(client IOFlushCloseWriter) error
-	WriteRestartClose(client IOFlushCloseWriter) error
-	Read(client IOReader) (*GatewayPayload, int, error)
-	Write(client IOFlushWriter, opCode opcode.OpCode, payload json.RawMessage) (err error)
+	WriteNormalClose(client io.Writer) error
+	WriteRestartClose(client io.Writer) error
+	Read(client io.Reader) (*GatewayPayload, int, error)
+	Write(client io.Writer, opCode opcode.OpCode, payload json.RawMessage) (err error)
 }
 
 // clientState should be discarded after the connection has closed.
@@ -59,24 +60,22 @@ func (c *clientState) Closed() bool {
 	return c.stateClosed.Load()
 }
 
-func (c *clientState) WriteNormalClose(client IOFlushCloseWriter) error {
+func (c *clientState) WriteNormalClose(client io.Writer) error {
 	return c.writeClose(client, 1000)
 }
 
-func (c *clientState) WriteRestartClose(client IOFlushCloseWriter) error {
+func (c *clientState) WriteRestartClose(client io.Writer) error {
 	return c.writeClose(client, 1012)
 }
 
-func (c *clientState) writeClose(client IOFlushWriter, code uint16) error {
+func (c *clientState) writeClose(client io.Writer, code uint16) error {
 	writeIfOpen := func() error {
 		if c.stateClosed.CAS(false, true) {
 			closeCodeBuf := make([]byte, 2)
 			binary.BigEndian.PutUint16(closeCodeBuf, code)
 
-			if _, err := client.Write(closeCodeBuf); err != nil {
-				return fmt.Errorf("unable to write close code to buffer. %w", err)
-			}
-			return client.Flush()
+			_, err := client.Write(closeCodeBuf)
+			return err
 		}
 		return net.ErrClosed
 	}
@@ -91,7 +90,7 @@ func (c *clientState) writeClose(client IOFlushWriter, code uint16) error {
 }
 
 // Read until a new data frame with updated info comes in, or fails.
-func (c *clientState) Read(client IOReader) (*GatewayPayload, int, error) {
+func (c *clientState) Read(client io.Reader) (*GatewayPayload, int, error) {
 	if c.stateClosed.Load() {
 		return nil, 0, net.ErrClosed
 	}
@@ -119,7 +118,7 @@ func (c *clientState) Read(client IOReader) (*GatewayPayload, int, error) {
 	return packet, len(data), nil
 }
 
-func (c *clientState) Write(client IOFlushWriter, opCode opcode.OpCode, payload json.RawMessage) (err error) {
+func (c *clientState) Write(client io.Writer, opCode opcode.OpCode, payload json.RawMessage) (err error) {
 	if c.stateClosed.Load() {
 		return net.ErrClosed
 	}
@@ -145,14 +144,6 @@ func (c *clientState) Write(client IOFlushWriter, opCode opcode.OpCode, payload 
 		return fmt.Errorf("unable to marshal packet; %w", err)
 	}
 
-	var length int
-	length, err = client.Write(data)
-	if err != nil {
-		return fmt.Errorf("failed to send packet; %w", err)
-	}
-	if length == 0 {
-		return errors.New("no data was sent")
-	}
-
-	return client.Flush()
+	_, err = client.Write(data)
+	return err
 }
