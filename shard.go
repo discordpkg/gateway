@@ -97,6 +97,7 @@ type Shard struct {
 	State      *GatewayState
 	handler    Handler
 	textWriter io.Writer
+	closeWriter io.Writer
 }
 
 // Dial sets up the websocket connection before identifying with the gateway.
@@ -136,6 +137,7 @@ func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn
 
 	s.Conn = conn
 	s.textWriter = s.writer(ws.OpText)
+	s.closeWriter = s.writer(ws.OpClose)
 	return conn, nil
 }
 
@@ -187,7 +189,6 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.OpCode, error) {
 	}
 	defer closeConnection()
 
-	writer := s.writer(ws.OpText)
 	controlHandler := wsutil.ControlFrameHandler(s.Conn, ws.StateClientSide)
 	rd := wsutil.Reader{
 		Source:          s.Conn,
@@ -257,7 +258,7 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.OpCode, error) {
 			return opcode.Invalid, errors.New("no data was actually read. Byte slice payload had a length of 0")
 		}
 
-		redundant, err := s.State.DemultiplexEvent(payload, writer)
+		redundant, err := s.State.DemultiplexEvent(payload, s.textWriter, s.closeWriter)
 		if redundant {
 			continue
 		}
@@ -270,9 +271,7 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.OpCode, error) {
 			if s.handler != nil {
 				s.handler(s.State.conf.ShardID, payload.EventName, payload.Data)
 			}
-		case opcode.EventInvalidSession:
-			closeWriter := wsutil.NewWriter(s.Conn, ws.StateClientSide, ws.OpClose)
-			s.State.InvalidateSession(closeWriter)
+		case opcode.EventInvalidSession, opcode.EventReconnect:
 			return payload.Op, nil
 		case opcode.EventHello:
 			var hello *GatewayHello
@@ -286,7 +285,7 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.OpCode, error) {
 			pulser.shard = s.State
 			pulser.forcedReadTimeout = &forcedReadTimeout
 
-			go pulser.pulser(ctx, life, writer)
+			go pulser.pulser(ctx, life, s.textWriter)
 		case opcode.EventHeartbeatACK:
 			pulser.gotAck.Store(true)
 		default:

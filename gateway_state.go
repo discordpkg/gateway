@@ -322,10 +322,10 @@ func (gs *GatewayState) InvalidateSession(closeWriter io.Writer) {
 	//gs.state = nil
 }
 
-func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, writer io.Writer) (redundant bool, err error) {
+func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, textWriter, closeWriter io.Writer) (redundant bool, err error) {
 	switch payload.Op {
 	case opcode.EventHeartbeat:
-		if err := gs.Heartbeat(writer); err != nil {
+		if err := gs.Heartbeat(textWriter); err != nil {
 			return false, fmt.Errorf("discord requested heartbeat, but was unable to send one. %w", err)
 		}
 	case opcode.EventHello:
@@ -333,11 +333,11 @@ func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, writer io.Writ
 			return true, nil
 		}
 		if gs.HaveSessionID() {
-			if err := gs.Resume(writer); err != nil {
+			if err := gs.Resume(textWriter); err != nil {
 				return false, fmt.Errorf("sending resume failed. closing. %w", err)
 			}
 		} else {
-			if err := gs.Identify(writer); err != nil {
+			if err := gs.Identify(textWriter); err != nil {
 				return false, fmt.Errorf("identify failed. closing. %w", err)
 			}
 		}
@@ -346,7 +346,10 @@ func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, writer io.Writ
 		if _, whitelisted := gs.whitelist[payload.EventName]; whitelisted {
 			return false, nil
 		}
-	case opcode.EventHeartbeatACK, opcode.EventInvalidSession, opcode.EventReconnect:
+	case  opcode.EventInvalidSession, opcode.EventReconnect:
+		gs.InvalidateSession(closeWriter)
+		return false, nil
+	case opcode.EventHeartbeatACK:
 		return false, nil
 	default:
 		// TODO: log new unhandled operation code
