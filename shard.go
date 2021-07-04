@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/andersfylling/discordgateway/closecode"
 	"github.com/andersfylling/discordgateway/intent"
 	"io"
 	"net"
@@ -139,7 +140,7 @@ func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn
 	return conn, nil
 }
 
-func (s *Shard) Write(op opcode.OpCode, data []byte) error {
+func (s *Shard) Write(op opcode.Type, data []byte) error {
 	return s.State.Write(s.textWriter, op, data)
 }
 
@@ -179,7 +180,7 @@ func writeClose(closer func(io.Writer) error, conn net.Conn, reason string) erro
 	return nil
 }
 
-func (s *Shard) EventLoop(ctx context.Context) (opcode.OpCode, error) {
+func (s *Shard) EventLoop(ctx context.Context) (opcode.Type, error) {
 	defer func() {
 		if s.State.HaveSessionID() {
 			s.State = &GatewayState{
@@ -246,12 +247,13 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.OpCode, error) {
 						_ = s.Conn.Close()
 						return opcode.Invalid, &FrameError{Err: net.ErrClosed}
 					}
-					switch errClose.Code {
-					case 1001, 4000: // allow resume
+					closeCode := closecode.Type(errClose.Code)
+					switch closeCode {
+					case closecode.ClientReconnecting, closecode.UnknownError: // allow resume
 					default:
 						s.State.InvalidateSession(s.closeWriter)
 					}
-					return opcode.Invalid, &CloseError{Code: uint(errClose.Code), Reason: errClose.Reason}
+					return opcode.Invalid, &CloseError{Code: closeCode, Reason: errClose.Reason}
 				} else {
 					return opcode.Invalid, &FrameError{Err: err}
 				}
@@ -283,13 +285,13 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.OpCode, error) {
 		}
 
 		switch payload.Op {
-		case opcode.EventDispatch:
+		case opcode.Dispatch:
 			if s.handler != nil {
 				s.handler(s.State.conf.ShardID, payload.EventName, payload.Data)
 			}
-		case opcode.EventInvalidSession, opcode.EventReconnect:
+		case opcode.InvalidSession, opcode.Reconnect:
 			return payload.Op, nil
-		case opcode.EventHello:
+		case opcode.Hello:
 			var hello *GatewayHello
 			if err := json.Unmarshal(payload.Data, &hello); err != nil {
 				return payload.Op, fmt.Errorf("failed to extract heartbeat from hello message. %w", err)
@@ -302,7 +304,7 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.OpCode, error) {
 			pulser.forcedReadTimeout = &forcedReadTimeout
 
 			go pulser.pulser(ctx, life, s.textWriter)
-		case opcode.EventHeartbeatACK:
+		case opcode.HeartbeatACK:
 			pulser.gotAck.Store(true)
 		default:
 		}

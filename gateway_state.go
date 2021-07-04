@@ -3,6 +3,7 @@ package discordgateway
 import (
 	"errors"
 	"fmt"
+	"github.com/andersfylling/discordgateway/closecode"
 	"github.com/andersfylling/discordgateway/event"
 	"github.com/andersfylling/discordgateway/json"
 	"github.com/bradfitz/iter"
@@ -19,7 +20,7 @@ import (
 )
 
 type CloseError struct {
-	Code   uint
+	Code   closecode.Type
 	Reason string
 }
 
@@ -199,11 +200,11 @@ func (gs *GatewayState) Close() error {
 	return nil
 }
 
-func (gs *GatewayState) isSendOpCode(op opcode.OpCode) bool {
-	validOps := []opcode.OpCode{
-		opcode.EventHeartbeat, opcode.EventIdentify,
-		opcode.EventPresenceUpdate, opcode.EventVoiceStateUpdate,
-		opcode.EventResume, opcode.EventRequestGuildMembers,
+func (gs *GatewayState) isSendOpCode(op opcode.Type) bool {
+	validOps := []opcode.Type{
+		opcode.Heartbeat, opcode.Identify,
+		opcode.PresenceUpdate, opcode.VoiceStateUpdate,
+		opcode.Resume, opcode.RequestGuildMembers,
 	}
 
 	for _, validOp := range validOps {
@@ -214,16 +215,16 @@ func (gs *GatewayState) isSendOpCode(op opcode.OpCode) bool {
 	return false
 }
 
-func (gs *GatewayState) Write(client io.Writer, op opcode.OpCode, payload json.RawMessage) (err error) {
+func (gs *GatewayState) Write(client io.Writer, op opcode.Type, payload json.RawMessage) (err error) {
 	if !gs.isSendOpCode(op) {
 		return errors.New(fmt.Sprintf("operation code %d is not for outgoing payloads", op))
 	}
 
-	if op != opcode.EventHeartbeat {
+	if op != opcode.Heartbeat {
 		// heartbeat should always be sent, regardless!
 		<-gs.conf.CommandRateLimitChan
 	}
-	if op == opcode.EventIdentify {
+	if op == opcode.Identify {
 		if available := gs.conf.IdentifyRateLimiter.Take(gs.conf.ShardID); !available {
 			return errors.New("identify rate limiter denied shard to identify")
 		}
@@ -253,7 +254,7 @@ func (gs *GatewayState) Read(client io.Reader) (*GatewayPayload, int, error) {
 func (gs *GatewayState) Heartbeat(client io.Writer) error {
 	seq := gs.SequenceNumber()
 	seqStr := strconv.FormatInt(seq, 10)
-	return gs.Write(client, opcode.EventHeartbeat, []byte(seqStr))
+	return gs.Write(client, opcode.Heartbeat, []byte(seqStr))
 }
 
 // Identify Close method may be used if Write fails
@@ -273,7 +274,7 @@ func (gs *GatewayState) Identify(client io.Writer) error {
 		return fmt.Errorf("unable to marshal identify payload. %w", err)
 	}
 
-	if err = gs.Write(client, opcode.EventIdentify, data); err != nil {
+	if err = gs.Write(client, opcode.Identify, data); err != nil {
 		return err
 	}
 
@@ -296,7 +297,7 @@ func (gs *GatewayState) Resume(client io.Writer) error {
 		return fmt.Errorf("unable to marshal resume payload. %w", err)
 	}
 
-	if err = gs.Write(client, opcode.EventResume, data); err != nil {
+	if err = gs.Write(client, opcode.Resume, data); err != nil {
 		return err
 	}
 
@@ -322,11 +323,11 @@ func (gs *GatewayState) InvalidateSession(closeWriter io.Writer) {
 
 func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, textWriter, closeWriter io.Writer) (redundant bool, err error) {
 	switch payload.Op {
-	case opcode.EventHeartbeat:
+	case opcode.Heartbeat:
 		if err := gs.Heartbeat(textWriter); err != nil {
 			return false, fmt.Errorf("discord requested heartbeat, but was unable to send one. %w", err)
 		}
-	case opcode.EventHello:
+	case opcode.Hello:
 		if gs.HaveIdentified() {
 			return true, nil
 		}
@@ -339,13 +340,13 @@ func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, textWriter, cl
 				return false, fmt.Errorf("identify failed. closing. %w", err)
 			}
 		}
-	case opcode.EventDispatch:
+	case opcode.Dispatch:
 		if _, whitelisted := gs.whitelist[payload.EventName]; !whitelisted {
 			return true, nil
 		}
-	case opcode.EventInvalidSession:
+	case opcode.InvalidSession:
 		gs.InvalidateSession(closeWriter)
-	case opcode.EventReconnect:
+	case opcode.Reconnect:
 		_ = gs.WriteRestartClose(closeWriter)
 	default:
 		// TODO: log new unhandled operation code

@@ -142,12 +142,12 @@ reconnect:
 	} else {
 		logger.Infof("event loop exited with op code: %s", op)
 		switch op {
-		case opcode.EventReconnect:
+		case opcode.Reconnect:
 			if !shard.State.HaveSessionID() {
 				logger.Fatal("expected session id to exist")
 			}
 			goto reconnect
-		case opcode.EventInvalidSession:
+		case opcode.InvalidSession:
 			if shard.State.HaveSessionID() {
 				logger.Fatal("expected session id to not exist")
 			}

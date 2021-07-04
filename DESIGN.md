@@ -1,3 +1,6 @@
+## Gateway & voice
+This package is technically only meant for gateway. Since the websocket voice implementation is so similar, I've added a sub-pkg named voice with all the related data; op code, close code, etc. Voice uses types from the discordgateway, but isolates it's own implementation (see /voice).
+
 ## States
 All websocket communication, read and writes, should flow through a state object (eg. gateway state) to ensure valid program behaviour. Once a connection terminates/closes for any reason, the state is also marked closed and becomes unusable. You must create a new state, even for resumes. This makes the lifetime of internal states easier to reason about, and no old configuration/behaviour is leaked into a new state.
 
