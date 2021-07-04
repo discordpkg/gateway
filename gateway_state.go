@@ -346,8 +346,11 @@ func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, textWriter, cl
 		if _, whitelisted := gs.whitelist[payload.EventName]; whitelisted {
 			return false, nil
 		}
-	case  opcode.EventInvalidSession, opcode.EventReconnect:
+	case  opcode.EventInvalidSession:
 		gs.InvalidateSession(closeWriter)
+		return false, nil
+	case opcode.EventReconnect:
+		_ = gs.WriteRestartClose(closeWriter)
 		return false, nil
 	case opcode.EventHeartbeatACK:
 		return false, nil
