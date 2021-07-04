@@ -21,16 +21,14 @@ import (
 	"github.com/andersfylling/discordgateway/opcode"
 )
 
-// ErrClosed https://tip.golang.org/pkg/net/#ErrClosed
-type ErrClosed struct {
-	err error
+type FrameError struct {
+	Unwanted bool
+	Err      error
 }
 
-func (e ErrClosed) Error() string {
-	return e.err.Error()
+func (e *FrameError) Error() string {
+	return e.Err.Error()
 }
-
-var UnhandledControlFrameErr = errors.New("unhandled control frame")
 
 type ShardConfig struct {
 	BotToken string
@@ -182,9 +180,7 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.OpCode, error) {
 			return
 		}
 
-		if err := writeClose(s.State.WriteRestartClose, s.Conn, "program shutdown"); err != nil {
-			log.Error("failed to close connection properly: ", err)
-		}
+		_ = s.State.WriteRestartClose(s.closeWriter)
 		_ = s.Conn.Close()
 	}
 	defer closeConnection()
@@ -206,38 +202,36 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.OpCode, error) {
 			// check for the "historical" i/o timeout message
 			// net.go@timeoutErr # ~583 at 2020-12-25
 			const ioTimeoutMessage = "i/o timeout"
-			if strings.Contains(err.Error(), ioTimeoutMessage) && forcedReadTimeout.Load() {
-				return opcode.Invalid, fmt.Errorf("closed connection due to timeout. %w", err)
+			errMsg := err.Error()
+			if strings.Contains(errMsg, ioTimeoutMessage) && forcedReadTimeout.Load() {
+				return opcode.Invalid, &FrameError{Err: net.ErrClosed}
 			} else {
-				closedConnection := strings.Contains(err.Error(), "use of closed network connection")
-				closedConnection = closedConnection || strings.Contains(err.Error(), "use of closed connection")
+				closedConnection := strings.Contains(errMsg, "use of closed network connection")
+				closedConnection = closedConnection || strings.Contains(errMsg, "use of closed connection")
 				if closedConnection || errors.Is(err, io.EOF) {
-					return opcode.Invalid, &ErrClosed{err}
+					return opcode.Invalid, &FrameError{Err: net.ErrClosed}
 				} else {
-					return opcode.Invalid, fmt.Errorf("failed to load next frame. %w", err)
+					return opcode.Invalid, &FrameError{Err: err}
 				}
 			}
 		}
 		if hdr.OpCode.IsControl() {
 			// discord does send close frames so these must be handled
 			if err := controlHandler(hdr, &rd); err != nil {
-				var normalClose wsutil.ClosedError
-				if errors.As(err, &normalClose) {
+				var errClose wsutil.ClosedError
+				if errors.As(err, &errClose) {
 					if forcedReadTimeout.Load() {
 						_ = s.Conn.Close()
+						return opcode.Invalid, &FrameError{Err: net.ErrClosed}
 					}
-					switch normalClose.Code {
+					switch errClose.Code {
 					case 1001, 4000: // allow resume
 					default:
-						closeWriter := wsutil.NewWriter(s.Conn, ws.StateClientSide, ws.OpClose)
-						s.State.InvalidateSession(closeWriter)
+						s.State.InvalidateSession(s.closeWriter)
 					}
-					if normalClose.Code == 1000 {
-						return opcode.Invalid, NormalCloseErr
-					}
-					return opcode.Invalid, &CloseError{Code: uint(normalClose.Code), Reason: normalClose.Reason}
+					return opcode.Invalid, &CloseError{Code: uint(errClose.Code), Reason: errClose.Reason}
 				} else {
-					return opcode.Invalid, fmt.Errorf("failed to handle control frame. %w", err)
+					return opcode.Invalid, &FrameError{Err: err}
 				}
 			}
 			continue
@@ -245,7 +239,7 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.OpCode, error) {
 		if hdr.OpCode&ws.OpText == 0 {
 			// discord only uses text, even for heartbeats / ping/pong frames
 			if err := rd.Discard(); err != nil {
-				return opcode.Invalid, fmt.Errorf("failed to discard unwanted frame. %w", err)
+				return opcode.Invalid, &FrameError{Unwanted: true, Err: err}
 			}
 			continue
 		}

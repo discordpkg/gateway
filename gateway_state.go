@@ -18,8 +18,6 @@ import (
 	"github.com/andersfylling/discordgateway/opcode"
 )
 
-var NormalCloseErr = &CloseError{Code: 1000, Reason: "client is going away"}
-
 type CloseError struct {
 	Code   uint
 	Reason string

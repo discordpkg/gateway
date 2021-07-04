@@ -22,6 +22,8 @@ Just like the go std packages, the error syntax is:
  - Err* for variables
  - *Error for struct implementations
 
+FrameError is wraps any internal error that happens when processing a frame. Any frame errors happens before the payload content can be read by the state. Try reconnecting.
+
 ## Rate Limiting Identify
 Given that identify may have to be shared across shards, the rate limiter must be inject-able.
 

@@ -130,7 +130,7 @@ reconnect:
 				logger.Errorf("unhandled close error, with discord op code(%d): %d", op, discordErr.Code)
 			}
 		}
-		var errClosed *discordgateway.ErrClosed
+		var errClosed *discordgateway.CloseError
 		if errors.As(err, &errClosed) || errors.Is(err, net.ErrClosed) || errors.Is(err, io.ErrClosedPipe) {
 			logger.Debug("errClosed - creating resume client")
 			if !shard.State.HaveSessionID() {
