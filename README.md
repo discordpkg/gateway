@@ -79,12 +79,11 @@ func main() {
 	}
 
 reconnect:
-	conn, err := shard.Dial(context.Background(), "wss://gateway.discord.gg/?v=8&encoding=json")
-	if err != nil {
+	if _, err := shard.Dial(context.Background(), "wss://gateway.discord.gg/?v=8&encoding=json"); err != nil {
 		log.Fatal("failed to open websocket connection. ", err)
 	}
 
-	if op, err := shard.EventLoop(context.Background(), conn); err != nil {
+	if op, err := shard.EventLoop(context.Background()); err != nil {
 		var discordErr *discordgateway.CloseError
 		if errors.As(err, &discordErr) {
 			switch discordErr.Code {
