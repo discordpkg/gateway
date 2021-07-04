@@ -250,6 +250,16 @@ func (gs *GatewayState) Read(client io.Reader) (*GatewayPayload, int, error) {
 	return payload, length, nil
 }
 
+func (gs *GatewayState) Process(pipe io.Reader, textWriter, closeWriter io.Writer) (payload *GatewayPayload, redundant bool, err error) {
+	payload, _, err = gs.Read(pipe)
+	if err != nil {
+		return nil, false, err
+	}
+
+	redundant, err = gs.DemultiplexEvent(payload, textWriter, closeWriter)
+	return payload, redundant, err
+}
+
 // Heartbeat Close method may be used if Write fails
 func (gs *GatewayState) Heartbeat(client io.Writer) error {
 	seq := gs.SequenceNumber()

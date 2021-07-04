@@ -268,15 +268,7 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.Type, error) {
 			continue
 		}
 
-		payload, length, err := s.State.Read(&rd)
-		if err != nil {
-			return opcode.Invalid, fmt.Errorf("unable to call shard read successfully: %w", err)
-		}
-		if length == 0 {
-			return opcode.Invalid, errors.New("no data was actually read. Byte slice payload had a length of 0")
-		}
-
-		redundant, err := s.State.DemultiplexEvent(payload, s.textWriter, s.closeWriter)
+		payload, redundant, err := s.State.Process(&rd, s.textWriter, s.closeWriter)
 		if redundant {
 			continue
 		}
