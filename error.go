@@ -49,13 +49,6 @@ const (
 	CloseCodeDisallowedIntents
 )
 
-type CloseErr struct {
-	Code CloseCode
-	Err  error
-}
-
-var _ error = (*CloseErr)(nil)
-
 // ////////////////////////////////////////////////////
 //
 // VOICE: error codes and types
@@ -95,8 +88,3 @@ const (
 	VoiceCloseCodeUnknownEncryptionMode
 )
 
-type DiscordVoiceCloseErr struct {
-	Code VoiceCloseEventCode
-}
-
-var _ error = (*DiscordVoiceCloseErr)(nil)
