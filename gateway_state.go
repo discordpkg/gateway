@@ -353,6 +353,8 @@ func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, textWriter, cl
 		return false, nil
 	default:
 		// TODO: log new unhandled operation code
+		//  at least anything that hasn't been implemented should not be considered redundant
+		return false, nil
 	}
 
 	return true, nil
