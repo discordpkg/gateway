@@ -355,6 +355,72 @@ func TestGatewayState_DemultiplexCloseCode(t *testing.T) {
 	})
 }
 
+func TestGatewayState_Process(t *testing.T) {
+	t.Run("should fail on sequence skipping", func(t *testing.T) {
+		client := NewGatewayState()
+		client.sessionID = "sgrtxfh"
+		client.whitelist = map[event.Type]struct{}{
+			event.MessageCreate: emptyStruct,
+		}
+		mock := &IOMock{
+			writeChan: make(chan []byte, 2),
+			readChan:  make(chan []byte, 2),
+		}
+
+		messageID := 2523
+		payloadStr := fmt.Sprintf(`{"op":0,"d":{"id":"%d"},"t":"%s","s":%d}`, messageID, event.MessageCreate, client.SequenceNumber()+2)
+		payload := []byte(payloadStr)
+
+		_, redundant, err := client.Process(bytes.NewReader(payload), mock, mock)
+		if err == nil {
+			t.Fatal("missing error")
+		}
+		if !redundant {
+			t.Error("should have been redundant")
+		}
+
+		t.Run("session id", func(t *testing.T) {
+			if client.sessionID == "" {
+				t.Error("session id was removed")
+			}
+		})
+
+		t.Run("close code", func(t *testing.T) {
+			code, err := mock.ReadCloseMessage()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if code != RestartCloseCode {
+				t.Errorf("incorrect close code. Got %d, wants %d", int(code), int(RestartCloseCode))
+			}
+		})
+	})
+	t.Run("should fail on unknown error", func(t *testing.T) {
+		client := NewGatewayState()
+		client.sessionID = "sgrtxfh"
+		client.whitelist = map[event.Type]struct{}{
+			event.MessageCreate: emptyStruct,
+		}
+		mock := &IOMock{
+			writeChan: make(chan []byte, 2),
+			readChan:  make(chan []byte, 2),
+		}
+
+		messageID := 2523
+		payloadStr := fmt.Sprintf(`{"op":0,"d":{"id":"%d"},"t":"%s","s":%d}`, messageID, event.MessageCreate, client.SequenceNumber()+2)
+		payload := []byte(payloadStr + "}}}}}}") // malformed json
+
+		_, redundant, err := client.Process(bytes.NewReader(payload), mock, mock)
+		if err == nil {
+			t.Fatal("missing error")
+		}
+		if redundant {
+			t.Error("unhandled errors should not be redundant")
+		}
+	})
+}
+
 func TestNewRateLimiter(t *testing.T) {
 	t.Run("10/10ms", func(t *testing.T) {
 		rl, closer := NewRateLimiter(10, 10*time.Millisecond)
