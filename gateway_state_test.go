@@ -419,6 +419,60 @@ func TestGatewayState_Process(t *testing.T) {
 			t.Error("unhandled errors should not be redundant")
 		}
 	})
+	t.Run("dispatch whitelisted event", func(t *testing.T) {
+		client := NewGatewayState()
+		client.sessionID = "sgrtxfh"
+		client.whitelist = map[event.Type]struct{}{
+			event.MessageCreate: emptyStruct,
+		}
+		mock := &IOMock{
+			writeChan: make(chan []byte, 2),
+			readChan:  make(chan []byte, 2),
+		}
+
+		messageID := 2523
+		payloadStr := fmt.Sprintf(`{"op":0,"d":{"id":"%d"},"t":"%s","s":%d}`, messageID, event.MessageCreate, client.SequenceNumber()+1)
+		data := []byte(payloadStr)
+
+		payload, redundant, err := client.Process(bytes.NewReader(data), mock, mock)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if redundant {
+			t.Error("should not be redundant")
+		}
+
+		if !strings.Contains(string(payload.Data), strconv.Itoa(messageID)) {
+			t.Errorf("message payload is missing message id. Got '%s'", string(payload.Data))
+		}
+		if client.Closed() {
+			t.Error("client closed")
+		}
+	})
+	t.Run("dispatch blacklisted event", func(t *testing.T) {
+		client := NewGatewayState()
+		client.sessionID = "sgrtxfh"
+		client.whitelist = map[event.Type]struct{}{}
+		mock := &IOMock{
+			writeChan: make(chan []byte, 2),
+			readChan:  make(chan []byte, 2),
+		}
+
+		messageID := 2523
+		payloadStr := fmt.Sprintf(`{"op":0,"d":{"id":"%d"},"t":"%s","s":%d}`, messageID, event.MessageCreate, client.SequenceNumber()+1)
+		data := []byte(payloadStr)
+
+		_, redundant, err := client.Process(bytes.NewReader(data), mock, mock)
+		if err != nil {
+			t.Fatal("blacklisted events should not trigger an error, just a redundancy flag")
+		}
+		if !redundant {
+			t.Error("blacklisted events are redundant")
+		}
+		if client.Closed() {
+			t.Error("client closed")
+		}
+	})
 }
 
 func TestNewRateLimiter(t *testing.T) {
