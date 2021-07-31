@@ -256,6 +256,44 @@ func TestGatewayState_Resume(t *testing.T) {
 		}
 	})
 }
+func TestGatewayState_InvalidateSession(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		client := NewGatewayState()
+		client.sessionID = "sgrtxfh"
+		mock := &IOMock{
+			writeChan: make(chan []byte, 2),
+		}
+
+		client.InvalidateSession(mock)
+
+		t.Run("session id", func(t *testing.T) {
+			if client.sessionID != "" {
+				t.Error("session id was not removed")
+			}
+		})
+
+		t.Run("close code", func(t *testing.T) {
+			code, err := mock.ReadCloseMessage()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if code != NormalCloseCode {
+				t.Errorf("incorrect close code. Got %d, wants %d", int(code), int(NormalCloseCode))
+			}
+		})
+	})
+	t.Run("failed", func(t *testing.T) {
+		client := NewGatewayState()
+		client.sessionID = "sgrtxfh"
+		closedMock := &IOMockWithClosedConnection{IOMock{}}
+
+		client.InvalidateSession(closedMock)
+		if client.sessionID != "" {
+			t.Error("session id was not removed")
+		}
+	})
+}
 
 func TestNewRateLimiter(t *testing.T) {
 	t.Run("10/10ms", func(t *testing.T) {

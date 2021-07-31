@@ -49,6 +49,41 @@ func (m *IOMock) Read(p []byte) (n int, err error) {
 	return m.readBuf.Read(p)
 }
 
+func (m *IOMock) ReadCloseMessage() (uint16, error) {
+	var content []byte
+	select {
+	case msg, ok := <-m.writeChan:
+		if !ok {
+			return 0, net.ErrClosed
+		}
+		content = msg
+	case <-time.After(time.Millisecond):
+		return 0, io.EOF
+	}
+
+	if len(content) != 2 {
+		return 0, errors.New("incorrect close code length")
+	}
+
+	return binary.BigEndian.Uint16(content), nil
+}
+
+func (m *IOMock) CloseCode() int32 {
+	code, err := m.ReadCloseMessage()
+	if err != nil {
+		return -1
+	}
+	return int32(code)
+}
+
+func (m *IOMock) NormalCloseCode() bool {
+	return m.CloseCode() == int32(NormalCloseCode)
+}
+
+func (m *IOMock) RestartCloseCode() bool {
+	return m.CloseCode() == int32(RestartCloseCode)
+}
+
 type IOMockWithClosedConnection struct {
 	IOMock
 }

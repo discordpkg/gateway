@@ -17,6 +17,11 @@ import (
 	"github.com/andersfylling/discordgateway/opcode"
 )
 
+const (
+	NormalCloseCode  uint16 = 1000
+	RestartCloseCode uint16 = 1012
+)
+
 type GatewayPayload struct {
 	Op        opcode.Type     `json:"op"`
 	Data      json.RawMessage `json:"d"`
@@ -64,11 +69,11 @@ func (c *baseState) Closed() bool {
 }
 
 func (c *baseState) WriteNormalClose(client io.Writer) error {
-	return c.writeClose(client, 1000)
+	return c.writeClose(client, NormalCloseCode)
 }
 
 func (c *baseState) WriteRestartClose(client io.Writer) error {
-	return c.writeClose(client, 1012)
+	return c.writeClose(client, RestartCloseCode)
 }
 
 func (c *baseState) writeClose(client io.Writer, code uint16) error {
