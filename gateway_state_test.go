@@ -295,6 +295,66 @@ func TestGatewayState_InvalidateSession(t *testing.T) {
 	})
 }
 
+func TestGatewayState_DemultiplexCloseCode(t *testing.T) {
+	t.Run("should invalidate session", func(t *testing.T) {
+		client := NewGatewayState()
+		client.sessionID = "sgrtxfh"
+		mock := &IOMock{
+			writeChan: make(chan []byte, 2),
+		}
+
+		if err := client.DemultiplexCloseCode(closecode.InvalidSeq, "sf", mock); err == nil {
+			t.Fatal("missing error")
+		}
+
+		t.Run("session id", func(t *testing.T) {
+			if client.sessionID != "" {
+				t.Error("session id was not removed")
+			}
+		})
+
+		t.Run("close code", func(t *testing.T) {
+			//
+			code, err := mock.ReadCloseMessage()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if code != NormalCloseCode {
+				t.Errorf("incorrect close code. Got %d, wants %d", int(code), int(NormalCloseCode))
+			}
+		})
+	})
+	t.Run("should allow session to reconnect", func(t *testing.T) {
+		client := NewGatewayState()
+		client.sessionID = "sgrtxfh"
+		mock := &IOMock{
+			writeChan: make(chan []byte, 2),
+		}
+
+		if err := client.DemultiplexCloseCode(closecode.ClientReconnecting, "sf", mock); err == nil {
+			t.Fatal("missing error")
+		}
+
+		t.Run("session id", func(t *testing.T) {
+			if client.sessionID == "" {
+				t.Error("session id was removed")
+			}
+		})
+
+		t.Run("close code", func(t *testing.T) {
+			code, err := mock.ReadCloseMessage()
+			if err == nil {
+				t.Error("there should be no close code")
+			}
+
+			if code != 0 {
+				t.Errorf("got unexpected close code %d", int(code))
+			}
+		})
+	})
+}
+
 func TestNewRateLimiter(t *testing.T) {
 	t.Run("10/10ms", func(t *testing.T) {
 		rl, closer := NewRateLimiter(10, 10*time.Millisecond)

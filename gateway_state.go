@@ -369,6 +369,7 @@ func (gs *GatewayState) DemultiplexEvent(payload *GatewayPayload, textWriter, cl
 	return false, nil
 }
 
+// DemultiplexCloseCode process close code sent by discord
 func (gs *GatewayState) DemultiplexCloseCode(code closecode.Type, reason string, closeWriter io.Writer) error {
 	switch code {
 	case closecode.ClientReconnecting, closecode.UnknownError:
