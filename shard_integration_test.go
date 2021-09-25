@@ -3,11 +3,12 @@ package discordgateway
 import (
 	"context"
 	"errors"
-	"github.com/andersfylling/discordgateway/intent"
-	"github.com/andersfylling/discordgateway/opcode"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/andersfylling/discordgateway/intent"
+	"github.com/andersfylling/discordgateway/opcode"
 
 	"github.com/andersfylling/discordgateway/event"
 )

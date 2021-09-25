@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/andersfylling/discordgateway/closecode"
-	"github.com/andersfylling/discordgateway/intent"
-	"github.com/bradfitz/iter"
 	"net"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/andersfylling/discordgateway/closecode"
+	"github.com/andersfylling/discordgateway/intent"
+	"github.com/bradfitz/iter"
 
 	"github.com/andersfylling/discordgateway/event"
 	"github.com/andersfylling/discordgateway/json"

@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/andersfylling/discordgateway/closecode"
-	"github.com/andersfylling/discordgateway/intent"
 	"io"
 	"net"
 	"strings"
 	"time"
+
+	"github.com/andersfylling/discordgateway/closecode"
+	"github.com/andersfylling/discordgateway/intent"
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"

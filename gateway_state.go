@@ -3,15 +3,16 @@ package discordgateway
 import (
 	"errors"
 	"fmt"
-	"github.com/andersfylling/discordgateway/closecode"
-	"github.com/andersfylling/discordgateway/event"
-	"github.com/andersfylling/discordgateway/json"
-	"github.com/bradfitz/iter"
 	"io"
 	"net"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/andersfylling/discordgateway/closecode"
+	"github.com/andersfylling/discordgateway/event"
+	"github.com/andersfylling/discordgateway/json"
+	"github.com/bradfitz/iter"
 
 	"go.uber.org/atomic"
 

@@ -1,8 +1,9 @@
 package intent
 
 import (
-	"github.com/andersfylling/discordgateway/event"
 	"testing"
+
+	"github.com/andersfylling/discordgateway/event"
 )
 
 func TestGuildEventsToIntents(t *testing.T) {
