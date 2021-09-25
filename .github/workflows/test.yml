@@ -1,4 +1,9 @@
 on:
+  pull_request:
+    types:
+      - synchronize
+      - opened
+      - reopened
   push:
     branches:
       - master
@@ -10,7 +15,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        go: ['1.16']
+        go: ['1.17']
     steps:
       - name: Setup Go
         uses: actions/setup-go@v1
@@ -24,7 +29,7 @@ jobs:
       - name: Format Test
         run: diff <(gofmt -d ./...) <(echo -n)
       - name: unit tests
-        run: go test -short -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+        run: go test -short -v -race -shuffle=on -coverprofile=coverage.txt -covermode=atomic ./...
       - name: Codecov
         run: bash <(curl -s https://codecov.io/bash) -t ${{secrets.CODECOV_TOKEN}} -B master -c -F unit -f "./coverage.txt" -Z
 
