@@ -1,3 +1,6 @@
+# Discord gateway
+To keep development simple and testable. Always return errors. Split business logic from pure websocket functionality by abstracting the socket client as a pipe through `io.Read`, `io.Close`, `io.Write`, to make the main code testable.
+
 ## Gateway & voice
 This package is technically only meant for gateway. Since the websocket voice implementation is so similar, I've added a sub-pkg named voice with all the related data; op code, close code, etc. Voice uses types from the discordgateway, but isolates it's own implementation (see /voice).
 
