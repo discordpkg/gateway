@@ -1,4 +1,4 @@
-package main
+package events
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ import (
 	"unicode"
 )
 
-func main() {
+func generate() {
 	file, err := parser.ParseFile(token.NewFileSet(), "internal/constants/events.go", nil, parser.ParseComments)
 	if err != nil {
 		panic(err)

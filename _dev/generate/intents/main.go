@@ -1,4 +1,4 @@
-package main
+package intents
 
 import (
 	"bytes"
@@ -14,7 +14,7 @@ import (
 	"text/template"
 )
 
-func main() {
+func generate() {
 	//file, err := parser.ParseFile(token.NewFileSet(), "/home/anders/dev/discordgateway/internal/constants/intents.go", nil, parser.ParseComments)
 	file, err := parser.ParseFile(token.NewFileSet(), "internal/constants/intents.go", nil, 0)
 	if err != nil {
