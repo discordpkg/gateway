@@ -1,0 +1,1 @@
+This _dev folder is ignored when discordgateway is compiled. Just storing a few deps for dev QoL. 
