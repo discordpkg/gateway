@@ -137,7 +137,7 @@ func (g *GatewayIntentYAML) Validate() error {
 	return nil
 }
 
-func ReadDiscordYaml(path string) *DiscordYAML {
+func ReadDiscordSchematic(path string) *DiscordYAML {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		panic(err)

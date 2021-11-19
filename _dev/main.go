@@ -5,6 +5,6 @@ import (
 )
 
 func main() {
-	y := ReadDiscordYaml(".../discord.yaml")
+	y := ReadDiscordSchematic(".../discord.yaml")
 	fmt.Println(*y)
 }
