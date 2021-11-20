@@ -8,10 +8,6 @@ import (
 
 type Type int
 
-func (t Type) Events() []event.Type {
-    return Events(t)
-}
-
 const (
 {{- range .}}
     {{.}} = Type({{.Intent}})
