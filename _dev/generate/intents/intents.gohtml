@@ -20,7 +20,7 @@ const (
 {{- end}}
 )
 
-const All Type = {{range .}}{{.}} | {{- end}} 0
+const Sum Type = {{range .}}{{.}} | {{- end}} 0
 
 var intentsToEventsMap = map[Type][]event.Type{
 {{- range .}}
@@ -39,6 +39,14 @@ var dmIntents = map[Type]struct{}{
     {{.}}: emptyStruct,
 {{- end}}
 {{- end}}
+}
+
+func All() []Type {
+    return []Type{
+    {{- range .}}
+        {{.}},
+    {{- end}}
+    }
 }
 
 func Valid(intent Type) bool {

@@ -131,7 +131,7 @@ const (
 	GuildWebhooks = Type(1 << 5)
 )
 
-const All Type = DirectMessages | DirectMessageReactions | DirectMessageTyping | Guilds | GuildBans | GuildEmojisAndStickers | GuildIntegrations | GuildInvites | GuildMembers | GuildMessages | GuildMessageReactions | GuildMessageTyping | GuildPresences | GuildScheduledEvents | GuildVoiceStates | GuildWebhooks | 0
+const Sum Type = DirectMessages | DirectMessageReactions | DirectMessageTyping | Guilds | GuildBans | GuildEmojisAndStickers | GuildIntegrations | GuildInvites | GuildMembers | GuildMessages | GuildMessageReactions | GuildMessageTyping | GuildPresences | GuildScheduledEvents | GuildVoiceStates | GuildWebhooks | 0
 
 var intentsToEventsMap = map[Type][]event.Type{
 	DirectMessages: []event.Type{
@@ -229,6 +229,27 @@ var dmIntents = map[Type]struct{}{
 	DirectMessages:         emptyStruct,
 	DirectMessageReactions: emptyStruct,
 	DirectMessageTyping:    emptyStruct,
+}
+
+func All() []Type {
+	return []Type{
+		DirectMessages,
+		DirectMessageReactions,
+		DirectMessageTyping,
+		Guilds,
+		GuildBans,
+		GuildEmojisAndStickers,
+		GuildIntegrations,
+		GuildInvites,
+		GuildMembers,
+		GuildMessages,
+		GuildMessageReactions,
+		GuildMessageTyping,
+		GuildPresences,
+		GuildScheduledEvents,
+		GuildVoiceStates,
+		GuildWebhooks,
+	}
 }
 
 func Valid(intent Type) bool {
