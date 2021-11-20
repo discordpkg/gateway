@@ -143,7 +143,7 @@ func main() {
    // ...
    
 	req := `{"guild_id":"23423","limit":0,"query":""}`
-	if err := shard.Write(opcode.RequestGuildMembers, []byte(req)); err != nil {
+	if err := shard.Write(command.RequestGuildMembers, []byte(req)); err != nil {
 		log.Fatal("failed to request guild members", err)
     }
     
