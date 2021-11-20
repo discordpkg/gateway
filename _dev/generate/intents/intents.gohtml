@@ -11,6 +11,10 @@ type Type int
 const (
 {{- range .}}
     // {{.Name}} {{.Intent}}
+    // Events:
+    {{- range .Events }}
+    //  - {{.Event}}
+    {{- end}}
     {{.}} = Type(1 << {{.BitOffset}})
 {{- end}}
 )
@@ -21,7 +25,7 @@ var intentsToEventsMap = map[Type][]event.Type{
 {{- range .}}
     {{.}}: []event.Type{
     {{- range .Events }}
-        event.{{.}},
+        event.{{.Name}},
     {{- end}}
     },
 {{- end}}
