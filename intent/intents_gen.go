@@ -9,109 +9,125 @@ import (
 type Type int
 
 const (
-	// DirectMessages DIRECT_MESSAGES
-	// Events:
-	//  - CHANNEL_PINS_UPDATE,
-	//  - MESSAGE_CREATE,
-	//  - MESSAGE_DELETE,
-	//  - MESSAGE_UPDATE,
+	// DirectMessages
+	//  value: DIRECT_MESSAGES
+	//  events:
+	//    - CHANNEL_PINS_UPDATE
+	//    - MESSAGE_CREATE
+	//    - MESSAGE_DELETE
+	//    - MESSAGE_UPDATE
 	DirectMessages = Type(1 << 12)
-	// DirectMessageReactions DIRECT_MESSAGE_REACTIONS
-	// Events:
-	// - MESSAGE_REACTION_ADD,
-	// - MESSAGE_REACTION_REMOVE,
-	// - MESSAGE_REACTION_REMOVE_ALL,
-	// - MESSAGE_REACTION_REMOVE_EMOJI,
+	// DirectMessageReactions
+	//  value: DIRECT_MESSAGE_REACTIONS
+	//  events:
+	//    - MESSAGE_REACTION_ADD
+	//    - MESSAGE_REACTION_REMOVE
+	//    - MESSAGE_REACTION_REMOVE_ALL
+	//    - MESSAGE_REACTION_REMOVE_EMOJI
 	DirectMessageReactions = Type(1 << 13)
-	// DirectMessageTyping DIRECT_MESSAGE_TYPING
-	// Events:
-	// - TYPING_START,
+	// DirectMessageTyping
+	//  value: DIRECT_MESSAGE_TYPING
+	//  events:
+	//    - TYPING_START
 	DirectMessageTyping = Type(1 << 14)
-	// Guilds GUILDS
-	// Events:
-	// - CHANNEL_CREATE,
-	// - CHANNEL_DELETE,
-	// - CHANNEL_PINS_UPDATE,
-	// - CHANNEL_UPDATE,
-	// - GUILD_CREATE,
-	// - GUILD_DELETE,
-	// - GUILD_ROLE_CREATE,
-	// - GUILD_ROLE_DELETE,
-	// - GUILD_ROLE_UPDATE,
-	// - GUILD_UPDATE,
-	// - STAGE_INSTANCE_CREATE,
-	// - STAGE_INSTANCE_DELETE,
-	// - STAGE_INSTANCE_UPDATE,
-	// - THREAD_CREATE,
-	// - THREAD_DELETE,
-	// - THREAD_LIST_SYNC,
-	// - THREAD_MEMBERS_UPDATE,
-	// - THREAD_MEMBER_UPDATE,
-	// - THREAD_UPDATE,
+	// Guilds
+	//  value: GUILDS
+	//  events:
+	//    - CHANNEL_CREATE
+	//    - CHANNEL_DELETE
+	//    - CHANNEL_PINS_UPDATE
+	//    - CHANNEL_UPDATE
+	//    - GUILD_CREATE
+	//    - GUILD_DELETE
+	//    - GUILD_ROLE_CREATE
+	//    - GUILD_ROLE_DELETE
+	//    - GUILD_ROLE_UPDATE
+	//    - GUILD_UPDATE
+	//    - STAGE_INSTANCE_CREATE
+	//    - STAGE_INSTANCE_DELETE
+	//    - STAGE_INSTANCE_UPDATE
+	//    - THREAD_CREATE
+	//    - THREAD_DELETE
+	//    - THREAD_LIST_SYNC
+	//    - THREAD_MEMBERS_UPDATE
+	//    - THREAD_MEMBER_UPDATE
+	//    - THREAD_UPDATE
 	Guilds = Type(1 << 0)
-	// GuildBans GUILD_BANS
-	// Events:
-	// - GUILD_BAN_ADD,
-	// - GUILD_BAN_REMOVE,
+	// GuildBans
+	//  value: GUILD_BANS
+	//  events:
+	//    - GUILD_BAN_ADD
+	//    - GUILD_BAN_REMOVE
 	GuildBans = Type(1 << 2)
-	// GuildEmojisAndStickers GUILD_EMOJIS_AND_STICKERS
-	// Events:
-	// - GUILD_EMOJIS_UPDATE,
-	// - GUILD_STICKERS_UPDATE,
+	// GuildEmojisAndStickers
+	//  value: GUILD_EMOJIS_AND_STICKERS
+	//  events:
+	//    - GUILD_EMOJIS_UPDATE
+	//    - GUILD_STICKERS_UPDATE
 	GuildEmojisAndStickers = Type(1 << 3)
-	// GuildIntegrations GUILD_INTEGRATIONS
-	// Events:
-	// - GUILD_INTEGRATIONS_UPDATE,
-	// - INTEGRATION_CREATE,
-	// - INTEGRATION_DELETE,
-	// - INTEGRATION_UPDATE,
+	// GuildIntegrations
+	//  value: GUILD_INTEGRATIONS
+	//  events:
+	//    - GUILD_INTEGRATIONS_UPDATE
+	//    - INTEGRATION_CREATE
+	//    - INTEGRATION_DELETE
+	//    - INTEGRATION_UPDATE
 	GuildIntegrations = Type(1 << 4)
-	// GuildInvites GUILD_INVITES
-	// Events:
-	// - INVITE_CREATE,
-	// - INVITE_DELETE,
+	// GuildInvites
+	//  value: GUILD_INVITES
+	//  events:
+	//    - INVITE_CREATE
+	//    - INVITE_DELETE
 	GuildInvites = Type(1 << 6)
-	// GuildMembers GUILD_MEMBERS
-	// Events:
-	// - GUILD_CREATE,
+	// GuildMembers
+	//  value: GUILD_MEMBERS
+	//  events:
+	//    - GUILD_CREATE
 	GuildMembers = Type(1 << 1)
-	// GuildMessages GUILD_MESSAGES
-	// Events:
-	// - MESSAGE_CREATE,
-	// - MESSAGE_DELETE,
-	// - MESSAGE_DELETE_BULK,
-	// - MESSAGE_UPDATE,
+	// GuildMessages
+	//  value: GUILD_MESSAGES
+	//  events:
+	//    - MESSAGE_CREATE
+	//    - MESSAGE_DELETE
+	//    - MESSAGE_DELETE_BULK
+	//    - MESSAGE_UPDATE
 	GuildMessages = Type(1 << 9)
-	// GuildMessageReactions GUILD_MESSAGE_REACTIONS
-	// Events:
-	// - MESSAGE_REACTION_ADD,
-	// - MESSAGE_REACTION_REMOVE,
-	// - MESSAGE_REACTION_REMOVE_ALL,
-	// - MESSAGE_REACTION_REMOVE_EMOJI,
+	// GuildMessageReactions
+	//  value: GUILD_MESSAGE_REACTIONS
+	//  events:
+	//    - MESSAGE_REACTION_ADD
+	//    - MESSAGE_REACTION_REMOVE
+	//    - MESSAGE_REACTION_REMOVE_ALL
+	//    - MESSAGE_REACTION_REMOVE_EMOJI
 	GuildMessageReactions = Type(1 << 10)
-	// GuildMessageTyping GUILD_MESSAGE_TYPING
-	// Events:
-	// - TYPING_START,
+	// GuildMessageTyping
+	//  value: GUILD_MESSAGE_TYPING
+	//  events:
+	//    - TYPING_START
 	GuildMessageTyping = Type(1 << 11)
-	// GuildPresences GUILD_PRESENCES
-	// Events:
-	// - PRESENCE_UPDATE,
+	// GuildPresences
+	//  value: GUILD_PRESENCES
+	//  events:
+	//    - PRESENCE_UPDATE
 	GuildPresences = Type(1 << 8)
-	// GuildScheduledEvents GUILD_SCHEDULED_EVENTS
-	// Events:
-	// - GUILD_SCHEDULED_EVENT_CREATE,
-	// - GUILD_SCHEDULED_EVENT_DELETE,
-	// - GUILD_SCHEDULED_EVENT_UPDATE,
-	// - GUILD_SCHEDULED_EVENT_USER_ADD,
-	// - GUILD_SCHEDULED_EVENT_USER_REMOVE,
+	// GuildScheduledEvents
+	//  value: GUILD_SCHEDULED_EVENTS
+	//  events:
+	//    - GUILD_SCHEDULED_EVENT_CREATE
+	//    - GUILD_SCHEDULED_EVENT_DELETE
+	//    - GUILD_SCHEDULED_EVENT_UPDATE
+	//    - GUILD_SCHEDULED_EVENT_USER_ADD
+	//    - GUILD_SCHEDULED_EVENT_USER_REMOVE
 	GuildScheduledEvents = Type(1 << 16)
-	// GuildVoiceStates GUILD_VOICE_STATES
-	// Events:
-	// - VOICE_STATE_UPDATE,
+	// GuildVoiceStates
+	//  value: GUILD_VOICE_STATES
+	//  events:
+	//    - VOICE_STATE_UPDATE
 	GuildVoiceStates = Type(1 << 7)
-	// GuildWebhooks GUILD_WEBHOOKS
-	// Events:
-	// - WEBHOOKS_UPDATE,
+	// GuildWebhooks
+	//  value: GUILD_WEBHOOKS
+	//  events:
+	//    - WEBHOOKS_UPDATE
 	GuildWebhooks = Type(1 << 5)
 )
 

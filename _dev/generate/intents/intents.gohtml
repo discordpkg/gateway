@@ -10,10 +10,11 @@ type Type int
 
 const (
 {{- range .}}
-    // {{.Name}} {{.Intent}}
-    // Events:
+    // {{.Name}}
+    //  value: {{.Intent}}
+    //  events:
     {{- range .Events }}
-    //  - {{.Event}}
+    //    - {{.Event}}
     {{- end}}
     {{.}} = Type(1 << {{.BitOffset}})
 {{- end}}
