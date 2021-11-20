@@ -3,7 +3,6 @@ package generate
 import (
 	"bytes"
 	"go/format"
-	"io/ioutil"
 	"path"
 	"strings"
 	"text/template"
@@ -31,7 +30,7 @@ func FmtDecapitalize(s string) string {
 	return strings.ToLower(s[:1]) + s[1:]
 }
 
-func MakeFile(data interface{}, templateFile, targetFile string) (err error) {
+func GoCode(data interface{}, templateFile, targetFile string) (formattedCode []byte, err error) {
 	templateConfiguration := template.Must(template.
 		New(path.Base(templateFile)).
 		Funcs(template.FuncMap{
@@ -46,17 +45,12 @@ func MakeFile(data interface{}, templateFile, targetFile string) (err error) {
 	// Execute the template, inserting all the event information
 	var b bytes.Buffer
 	if err = templateConfiguration.Execute(&b, data); err != nil {
-		return err
+		return nil, err
 	}
 
-	var formattedCode []byte
 	if formattedCode, err = format.Source(b.Bytes()); err != nil {
-		return err
+		return nil, err
 	}
 
-	if err = ioutil.WriteFile(targetFile, formattedCode, 0644); err != nil {
-		return err
-	}
-
-	return nil
+	return formattedCode, nil
 }
