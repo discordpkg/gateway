@@ -10,7 +10,8 @@ type Type int
 
 const (
 {{- range .}}
-    {{.}} = Type({{.Intent}})
+    // {{.Name}} {{.Intent}}
+    {{.}} = Type(1 << {{.BitOffset}})
 {{- end}}
 )
 
