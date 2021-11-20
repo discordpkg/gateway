@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/andersfylling/discordgateway/command"
 	"io"
 	"net"
 	"strings"
@@ -130,7 +131,7 @@ func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn
 	return conn, nil
 }
 
-func (s *Shard) Write(op opcode.Type, data []byte) error {
+func (s *Shard) Write(op command.Type, data []byte) error {
 	return s.State.Write(s.textWriter, op, data)
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/andersfylling/discordgateway/command"
 	"io"
 	"net"
 	"testing"
@@ -101,7 +102,7 @@ func TestClientState(t *testing.T) {
 			}
 
 			data := []byte(`"some test data"`)
-			op := opcode.Heartbeat
+			op := command.Heartbeat
 			if err := client.Write(mock, op, data); err != nil {
 				t.Fatal(err)
 			}
@@ -124,7 +125,7 @@ func TestClientState(t *testing.T) {
 				t.Errorf("incorrect payload data. Got %s, wants %s", packet.Data, data)
 			}
 
-			if packet.Op != op {
+			if packet.Op != opcode.Type(op) {
 				t.Errorf("incorrect operation code. Got %d, wants %d", packet.Op, op)
 			}
 		})
@@ -132,7 +133,7 @@ func TestClientState(t *testing.T) {
 			client := newState()
 			mock := &IOMockWithClosedConnection{}
 
-			err := client.Write(mock, opcode.Identify, nil)
+			err := client.Write(mock, command.Identify, nil)
 			if err == nil {
 				t.Fatal("expected heartbeat to fail when writing to closed connection")
 			}
@@ -307,7 +308,7 @@ func TestClientState(t *testing.T) {
 			}
 
 			shouldFail(client.WriteNormalClose(mock))
-			shouldFail(client.Write(mock, opcode.Heartbeat, []byte(`{}`)))
+			shouldFail(client.Write(mock, command.Heartbeat, []byte(`{}`)))
 
 			_, _, err := client.Read(mock)
 			shouldFail(err)

@@ -2,21 +2,27 @@ gateway:
   url: "https://discord.com/developers/docs/topics/gateway"
   commands:
     - id: IDENTIFY
+      opcode: 2
       description: "triggers the initial handshake with the gateway"
       url: "https://discord.com/developers/docs/topics/gateway#identify"
     - id: RESUME
+      opcode: 6
       description: "resumes a dropped gateway connection"
       url: "https://discord.com/developers/docs/topics/gateway#resume"
     - id: HEARTBEAT
+      opcode: 1
       description: "maintains an active gateway connection"
       url: "https://discord.com/developers/docs/topics/gateway#heartbeat"
     - id: REQUEST_GUILD_MEMBERS
+      opcode: 8
       description: "requests members for a guild"
       url: "https://discord.com/developers/docs/topics/gateway#request-guild-members"
     - id: UPDATE_VOICE_STATE
+      opcode: 4
       description: "joins, moves, or disconnects the client from a voice channel"
       url: "https://discord.com/developers/docs/topics/gateway#update-voice-state"
     - id: UPDATE_PRESENCE
+      opcode: 3
       description: "updates a client's presence"
       url: "https://discord.com/developers/docs/topics/gateway#update-presence"
   events:

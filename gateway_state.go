@@ -3,6 +3,7 @@ package discordgateway
 import (
 	"errors"
 	"fmt"
+	"github.com/andersfylling/discordgateway/command"
 	"io"
 	"net"
 	"strconv"
@@ -201,37 +202,18 @@ func (gs *GatewayState) Close() error {
 	return nil
 }
 
-func (gs *GatewayState) isSendOpCode(op opcode.Type) bool {
-	validOps := []opcode.Type{
-		opcode.Heartbeat, opcode.Identify,
-		opcode.PresenceUpdate, opcode.VoiceStateUpdate,
-		opcode.Resume, opcode.RequestGuildMembers,
-	}
-
-	for _, validOp := range validOps {
-		if op == validOp {
-			return true
-		}
-	}
-	return false
-}
-
-func (gs *GatewayState) Write(client io.Writer, op opcode.Type, payload json.RawMessage) (err error) {
-	if !gs.isSendOpCode(op) {
-		return errors.New(fmt.Sprintf("operation code %d is not for outgoing payloads", op))
-	}
-
-	if op != opcode.Heartbeat {
+func (gs *GatewayState) Write(client io.Writer, opc command.Type, payload json.RawMessage) (err error) {
+	if opc != command.Heartbeat {
 		// heartbeat should always be sent, regardless!
 		<-gs.conf.CommandRateLimitChan
 	}
-	if op == opcode.Identify {
+	if opc == command.Identify {
 		if available := gs.conf.IdentifyRateLimiter.Take(gs.conf.ShardID); !available {
 			return errors.New("identify rate limiter denied shard to identify")
 		}
 	}
 
-	return gs.state.Write(client, op, payload)
+	return gs.state.Write(client, opc, payload)
 }
 
 func (gs *GatewayState) Read(client io.Reader) (*GatewayPayload, int, error) {
@@ -269,7 +251,7 @@ func (gs *GatewayState) Process(pipe io.Reader, textWriter, closeWriter io.Write
 func (gs *GatewayState) Heartbeat(client io.Writer) error {
 	seq := gs.SequenceNumber()
 	seqStr := strconv.FormatInt(seq, 10)
-	return gs.Write(client, opcode.Heartbeat, []byte(seqStr))
+	return gs.Write(client, command.Heartbeat, []byte(seqStr))
 }
 
 // Identify Close method may be used if Write fails
@@ -289,7 +271,7 @@ func (gs *GatewayState) Identify(client io.Writer) error {
 		return fmt.Errorf("unable to marshal identify payload. %w", err)
 	}
 
-	if err = gs.Write(client, opcode.Identify, data); err != nil {
+	if err = gs.Write(client, command.Identify, data); err != nil {
 		return err
 	}
 
@@ -312,7 +294,7 @@ func (gs *GatewayState) Resume(client io.Writer) error {
 		return fmt.Errorf("unable to marshal resume payload. %w", err)
 	}
 
-	if err = gs.Write(client, opcode.Resume, data); err != nil {
+	if err = gs.Write(client, command.Resume, data); err != nil {
 		return err
 	}
 

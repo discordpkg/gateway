@@ -38,10 +38,10 @@ func (d *DiscordYAML) Sort() {
 }
 
 type GatewayYAML struct {
-	Events   []GatewayEventYAML  `yaml:"events"`
-	Commands []GatewayEventYAML  `yaml:"commands"`
-	Intents  []GatewayIntentYAML `yaml:"intents"`
-	Url      string              `yaml:"url" validate:"url"`
+	Events   []GatewayEventYAML     `yaml:"events"`
+	Commands []GatewayOperationYAML `yaml:"commands"`
+	Intents  []GatewayIntentYAML    `yaml:"intents"`
+	Url      string                 `yaml:"url" validate:"url"`
 }
 
 func (g *GatewayYAML) Validate() error {
@@ -113,6 +113,13 @@ type GatewayEventYAML struct {
 
 	// ShardID is specified for event that only work for one specific shard id
 	ShardID *int `yaml:"shard_id" validate:"gte=0"`
+}
+
+type GatewayOperationYAML struct {
+	ID          string `yaml:"id" validate:"required,ascii,uppercase"`
+	Description string `yaml:"description" validate:"ascii"`
+	Url         string `yaml:"url" validate:"url"`
+	Opcode      int    `yaml:"opcode" validate:"gte=0"`
 }
 
 type GatewayIntentYAML struct {

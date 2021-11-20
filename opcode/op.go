@@ -1,5 +1,7 @@
 package opcode
 
+import "github.com/andersfylling/discordgateway/command"
+
 // Type is the discord operation value
 type Type uint
 
@@ -9,17 +11,17 @@ const (
 
 // send / receive
 const (
-	Heartbeat Type = 1
+	Heartbeat = Type(command.Heartbeat)
 	_
 )
 
 // send only
 const (
-	Identify            Type = 2
-	PresenceUpdate      Type = 3
-	VoiceStateUpdate    Type = 4
-	Resume              Type = 6
-	RequestGuildMembers Type = 8
+	Identify            = Type(command.Identify)
+	PresenceUpdate      = Type(command.UpdatePresence)
+	VoiceStateUpdate    = Type(command.UpdateVoiceState)
+	Resume              = Type(command.Resume)
+	RequestGuildMembers = Type(command.RequestGuildMembers)
 )
 
 // receive only

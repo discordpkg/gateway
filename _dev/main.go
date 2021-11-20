@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/andersfylling/discordgateway/_dev/generate"
+	"github.com/andersfylling/discordgateway/_dev/generate/commands"
 	"github.com/andersfylling/discordgateway/_dev/generate/events"
 	"github.com/andersfylling/discordgateway/_dev/generate/intents"
 	"io/ioutil"
@@ -22,6 +23,7 @@ func main() {
 	schematic := ReadDiscordSchematic("../discord.yaml")
 	GenerateIntents(&schematic.Gateway)
 	GenerateEvents(&schematic.Gateway)
+	GenerateCommands(&schematic.Gateway)
 }
 
 func GenerateIntents(gateway *GatewayYAML) {
@@ -80,6 +82,31 @@ func GenerateEvents(gateway *GatewayYAML) {
 	}
 
 	generatedFilePath := "../event/events_gen.go"
+	if err = ioutil.WriteFile(generatedFilePath, code, 0644); err != nil {
+		panic(err)
+	}
+}
+
+func GenerateCommands(gateway *GatewayYAML) {
+	rows := make([]*commands.Info, len(gateway.Commands))
+	for i := range gateway.Commands {
+		command := gateway.Commands[i]
+
+		name := DiscordConstantToGoNamingConvention(command.ID)
+		rows[i] = &commands.Info{
+			Name:        name,
+			Opcode:      command.Opcode,
+			Description: command.Description,
+		}
+	}
+
+	templateFilePath := "generate/commands/commands.gohtml"
+	code, err := generate.GoCode(rows, templateFilePath)
+	if err != nil {
+		panic(err)
+	}
+
+	generatedFilePath := "../command/commands_gen.go"
 	if err = ioutil.WriteFile(generatedFilePath, code, 0644); err != nil {
 		panic(err)
 	}

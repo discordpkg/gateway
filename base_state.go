@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/andersfylling/discordgateway/command"
 	"io"
 	"io/ioutil"
 	"net"
@@ -48,7 +49,7 @@ type state interface {
 	WriteNormalClose(client io.Writer) error
 	WriteRestartClose(client io.Writer) error
 	Read(client io.Reader) (*GatewayPayload, int, error)
-	Write(client io.Writer, opCode opcode.Type, payload json.RawMessage) (err error)
+	Write(client io.Writer, opCode command.Type, payload json.RawMessage) (err error)
 }
 
 // baseState should be discarded after the connection has closed.
@@ -125,7 +126,7 @@ func (c *baseState) Read(client io.Reader) (*GatewayPayload, int, error) {
 	return packet, len(data), nil
 }
 
-func (c *baseState) Write(client io.Writer, opCode opcode.Type, payload json.RawMessage) (err error) {
+func (c *baseState) Write(client io.Writer, opCode command.Type, payload json.RawMessage) (err error) {
 	if c.stateClosed.Load() {
 		return net.ErrClosed
 	}
@@ -141,7 +142,7 @@ func (c *baseState) Write(client io.Writer, opCode opcode.Type, payload json.Raw
 	}()
 
 	packet := GatewayPayload{
-		Op:   opCode,
+		Op:   opcode.Type(opCode),
 		Data: payload,
 	}
 

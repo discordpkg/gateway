@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/andersfylling/discordgateway/command"
 	"net"
 	"strconv"
 	"strings"
@@ -65,12 +66,8 @@ func TestGatewayState_Write(t *testing.T) {
 
 	payload := []byte(`{"random":"data"}`)
 
-	if err := client.Write(mock, opcode.RequestGuildMembers, payload); err != nil {
+	if err := client.Write(mock, command.RequestGuildMembers, payload); err != nil {
 		t.Fatal(err)
-	}
-
-	if err := client.Write(mock, opcode.InvalidSession, payload); err == nil {
-		t.Error(fmt.Errorf("should not be able to dispatch a message under a receive only op code: %w", err))
 	}
 }
 
