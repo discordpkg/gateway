@@ -30,7 +30,7 @@ func FmtDecapitalize(s string) string {
 	return strings.ToLower(s[:1]) + s[1:]
 }
 
-func GoCode(data interface{}, templateFile, targetFile string) (formattedCode []byte, err error) {
+func GoCode(data interface{}, templateFile string) (formattedCode []byte, err error) {
 	templateConfiguration := template.Must(template.
 		New(path.Base(templateFile)).
 		Funcs(template.FuncMap{
