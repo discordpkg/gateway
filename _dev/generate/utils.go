@@ -9,23 +9,43 @@ import (
 	"text/template"
 )
 
-func MakeFile(data interface{}, templateFile, targetFile string) (err error) {
-	functions := template.FuncMap{
-		"ToUpper":      strings.ToUpper,
-		"ToLower":      strings.ToLower,
-		"Decapitalize": func(s string) string { return strings.ToLower(s[0:1]) + s[1:] },
-		"RemovePointer": func(s string) string {
-			if s != "" && s[0] == '*' {
-				return s[1:]
-			}
-			return s
-		},
+func FmtRemovePointerStrict(s string) string {
+	if s == "" {
+		panic("can't dereference an empty variable name")
 	}
-	tmpl := template.Must(template.New(path.Base(templateFile)).Funcs(functions).ParseFiles(templateFile))
+	if s[0] != '*' {
+		panic("not a pointer")
+	}
+
+	return s[1:]
+}
+
+func FmtRemovePointer(s string) string {
+	if s != "" && s[0] == '*' {
+		return s[1:]
+	}
+	return s
+}
+
+func FmtDecapitalize(s string) string {
+	return strings.ToLower(s[:1]) + s[1:]
+}
+
+func MakeFile(data interface{}, templateFile, targetFile string) (err error) {
+	templateConfiguration := template.Must(template.
+		New(path.Base(templateFile)).
+		Funcs(template.FuncMap{
+			"ToUpper":             strings.ToUpper,
+			"ToLower":             strings.ToLower,
+			"Decapitalize":        FmtDecapitalize,
+			"RemovePointer":       FmtRemovePointer,
+			"RemovePointerStrict": FmtRemovePointerStrict,
+		}).
+		ParseFiles(templateFile))
 
 	// Execute the template, inserting all the event information
 	var b bytes.Buffer
-	if err = tmpl.Execute(&b, data); err != nil {
+	if err = templateConfiguration.Execute(&b, data); err != nil {
 		return err
 	}
 
