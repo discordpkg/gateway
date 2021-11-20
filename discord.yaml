@@ -158,6 +158,7 @@ gateway:
       events:
         - id: TYPING_START
     - id: DIRECT_MESSAGES
+      direct_message: true
       shard_id: 0
       bit_offset: 12
       events:
@@ -166,6 +167,7 @@ gateway:
         - id: MESSAGE_DELETE
         - id: CHANNEL_PINS_UPDATE
     - id: DIRECT_MESSAGE_REACTIONS
+      direct_message: true
       shard_id: 0
       bit_offset: 13
       events:
@@ -174,6 +176,7 @@ gateway:
         - id: MESSAGE_REACTION_REMOVE_ALL
         - id: MESSAGE_REACTION_REMOVE_EMOJI
     - id: DIRECT_MESSAGE_TYPING
+      direct_message: true
       shard_id: 0
       bit_offset: 14
       events:

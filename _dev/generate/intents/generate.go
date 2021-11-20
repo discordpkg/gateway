@@ -96,16 +96,16 @@ func makeFile(events []*intentInfo, tplFile, target string) {
 	}
 }
 
-type intentInfo struct {
+type IntentInfo struct {
 	Name   string
 	Intent string
 	Events string
 }
 
-func (e intentInfo) String() string {
+func (e IntentInfo) String() string {
 	return e.Name
 }
 
-func (e intentInfo) IsDM() bool {
+func (e IntentInfo) IsDM() bool {
 	return strings.HasPrefix(e.Name, "DirectMessage")
 }

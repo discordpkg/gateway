@@ -124,6 +124,8 @@ type GatewayIntentYAML struct {
 
 	// ShardID is specified for intents that only work for one specific shard id
 	ShardID *int `yaml:"shard_id" validate:"gte=0"`
+
+	DirectMessage bool `yaml:"direct_message"`
 }
 
 func (g *GatewayIntentYAML) Validate() error {
