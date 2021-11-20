@@ -6,27 +6,17 @@ import (
 	"github.com/andersfylling/discordgateway/event"
 )
 
-func TestGuildEventsToIntents(t *testing.T) {
-	type test struct {
-		intent Type
-		events []event.Type
+func TestAllAndSum(t *testing.T) {
+	all := All()
+	sum := Sum
+
+	sumAll := Type(0)
+	for i := range all {
+		sumAll += all[i]
 	}
 
-	table := []test{
-		{GuildMessages, []event.Type{event.MessageCreate}},
-		{Guilds, []event.Type{event.GuildCreate, event.ChannelCreate}},
-		{GuildBans | GuildEmojis | GuildIntegrations |
-			GuildInvites | GuildMembers | GuildMessageReactions |
-			GuildMessageTyping | GuildMessages | GuildPresences |
-			GuildVoiceStates | GuildWebhooks | Guilds,
-			event.All()},
-	}
-
-	for i := range table {
-		derived := GuildEventsToIntents(table[i].events)
-		if derived != table[i].intent {
-			t.Errorf("expected intent %d, got %d", table[i].intent, derived)
-		}
+	if sum != sumAll {
+		t.Fatal(`"Sum" does not have the same value as sum of "All()"`)
 	}
 }
 
@@ -48,11 +38,5 @@ func TestDMEventsToIntents(t *testing.T) {
 		if derived != table[i].intent {
 			t.Errorf("expected intent %d, got %d", table[i].intent, derived)
 		}
-	}
-}
-
-func TestAll(t *testing.T) {
-	if All != 32767 {
-		t.Fatalf("incorrect intent sum. Got %d, wants %d", All, 65534)
 	}
 }

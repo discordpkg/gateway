@@ -52,7 +52,7 @@ func TestCloseError_Error(t *testing.T) {
 
 func TestGatewayState_IntentGeneration(t *testing.T) {
 	gs := NewGatewayState()
-	if gs.intents != intent.All {
+	if gs.intents != intent.Sum {
 		t.Fatal("all intents should be activated")
 	}
 }
@@ -141,7 +141,7 @@ func TestGatewayState_Heartbeat(t *testing.T) {
 func TestGatewayState_Identify(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		client := NewGatewayState()
-		client.conf.GuildEvents = intent.Guilds.Events()
+		client.conf.GuildEvents = intent.Events(intent.Guilds)
 		mock := &IOMock{
 			writeChan: make(chan []byte, 2),
 		}
@@ -196,7 +196,7 @@ func TestGatewayState_Identify(t *testing.T) {
 func TestGatewayState_Resume(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		client := NewGatewayState()
-		client.conf.GuildEvents = intent.Guilds.Events()
+		client.conf.GuildEvents = intent.Events(intent.Guilds)
 		client.sessionID = "kdfjhsdk"
 		mock := &IOMock{
 			writeChan: make(chan []byte, 2),

@@ -23,16 +23,12 @@
 
 [//]: # "Discord is a mess. Consistency is a luxury. And simplicity is somewhere over here or there."
 
-This project aims to normalize some namings, make interacting more intuitive and development a smoother experience.
-
-Certain events and intents have been renamed in accordance to the famous CRUD naming scheme.
-
 Philosophy/requirements:
  - Complete control of goroutines (if desired)
- - intents are derived from GuildEvents and DMEvents specified in the configuration
-- desired events must be specified in the config, others are ignored (this allows for optimizations behind the scenes)
+ - intents are derived from GuildEvents, but you can also specify the intents you require
+ - desired events must be specified in the config, others are ignored (this allows for optimizations behind the scenes)
  - You're responsible for reading all incoming data
- - Sending gateway commands returns an error on failure
+ - Gateway commands fail if it could not be dispatched
  - context support
  - Control over reconnect, disconnect, or behavior for handling discord errors
 
