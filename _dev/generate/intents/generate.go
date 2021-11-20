@@ -5,10 +5,11 @@ import (
 )
 
 type IntentInfo struct {
-	Name   string
-	Intent string
-	Events []string
-	DM     bool
+	Name      string
+	Intent    string
+	BitOffset int
+	Events    []string
+	DM        bool
 }
 
 func (i IntentInfo) String() string {
