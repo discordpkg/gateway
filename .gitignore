@@ -17,3 +17,5 @@
 
 cmd/discordgateway-alert-bot/*.json
 cmd/discordgateway-alert-bot/main
+
+diagram.puml

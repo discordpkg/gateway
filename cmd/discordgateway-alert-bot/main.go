@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/andersfylling/discordgateway/shard"
 	"io"
 	"net"
 	"os"
@@ -89,16 +90,14 @@ type DiscordEvent struct {
 func listen(logger *logrus.Logger, token string) {
 	logger.Warn("STARTED")
 
-	shard, err := discordgateway.NewShard(nil, &discordgateway.ShardConfig{
-		BotToken:            token,
-		GuildEvents:         event.All(),
-		TotalNumberOfShards: 1,
-		IdentifyProperties: discordgateway.GatewayIdentifyProperties{
+	shard, err := shard.NewShard(0, token, nil,
+		discordgateway.WithGuildEvents(event.All()...),
+		discordgateway.WithIdentifyConnectionProperties(&discordgateway.IdentifyConnectionProperties{
 			OS:      "linux",
 			Browser: "github.com/andersfylling/discordgateway v0",
 			Device:  "tester",
-		},
-	})
+		}),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}

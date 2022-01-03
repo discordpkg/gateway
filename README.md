@@ -25,7 +25,7 @@
 
 Philosophy/requirements:
  - Complete control of goroutines (if desired)
- - intents are derived from GuildEvents, but you can also specify the intents you require
+ - intents are derived from GuildEvents & DMEvents, alternatively you can specify the intents directly
  - desired events must be specified in the config, others are ignored (this allows for optimizations behind the scenes)
  - You're responsible for reading all incoming data
  - Gateway commands fail if it could not be dispatched
@@ -74,7 +74,7 @@ func main() {
 	}
 
 reconnect:
-	if _, err := shard.Dial(context.Background(), "wss://gateway.discord.gg/?v=8&encoding=json"); err != nil {
+	if _, err := shard.Dial(context.Background(), "wss://gateway.discord.gg/?v=9&encoding=json"); err != nil {
 		log.Fatal("failed to open websocket connection. ", err)
 	}
 
@@ -136,7 +136,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if _, err := shard.Dial(context.Background(), "wss://gateway.discord.gg/?v=8&encoding=json"); err != nil {
+	if _, err := shard.Dial(context.Background(), "wss://gateway.discord.gg/?v=9&encoding=json"); err != nil {
 		log.Fatal("failed to open websocket connection. ", err)
 	}
 

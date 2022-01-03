@@ -21,6 +21,19 @@ Pull requests are squashed to keep the git history clean. To make the commit mes
 Auto-commit is enforced in this repository. The idea is that only what is approved should be merged into master, and extra
 commits can not be added later and silently merged in.
 
+## Architecture
+
+#### baseState
+Re-usable by voice and gateway clients.
+
+#### GatewayState
+Discord gateway client for dealing with receiving and sending events.
+
+
+## Events and intents
+Any event and intent can be added via the discord.yaml file followed by `go generate`.
+
+
 ## Testing
 
 Test cases must respect the `short` flag. Writing a integration test must first verify that `testing.Short()` is false before it can continue.

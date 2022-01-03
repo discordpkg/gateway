@@ -1,37 +1,32 @@
-package discordgateway
+package shard
 
 import (
 	"context"
 	"errors"
+	"github.com/andersfylling/discordgateway"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/andersfylling/discordgateway/intent"
 	"github.com/andersfylling/discordgateway/opcode"
 
 	"github.com/andersfylling/discordgateway/event"
 )
 
 func TestShardIntents(t *testing.T) {
-	shard, err := NewShard(nil, &ShardConfig{
-		BotToken: "sdjkfhsdf",
-		GuildEvents: []event.Type{
-			event.MessageCreate,
-		},
-		TotalNumberOfShards: 1,
-		IdentifyProperties: GatewayIdentifyProperties{
+	shard, err := NewShard(0, "adas", nil,
+		discordgateway.WithGuildEvents(event.MessageCreate),
+		discordgateway.WithIdentifyConnectionProperties(&discordgateway.IdentifyConnectionProperties{
 			OS:      "linux",
 			Browser: "github.com/andersfylling/discordgateway v0",
 			Device:  "tester",
-		},
-	})
+		}),
+	)
 	if err != nil {
 		t.Fatal("failed to create shard", err)
 	}
-
-	if shard.State.intents != intent.GuildMessages {
-		t.Fatal("incorrect message intents")
+	if shard == nil {
+		t.Fatal("shard instance is nil")
 	}
 }
 
@@ -49,21 +44,19 @@ func TestShard(t *testing.T) {
 	}
 
 	recordedEvents := make(map[event.Type]struct{})
-	var recordEvent Handler = func(id ShardID, e event.Type, message RawMessage) {
+	var recordEvent discordgateway.Handler = func(id discordgateway.ShardID, e event.Type, message discordgateway.RawMessage) {
 		recordedEvents[e] = struct{}{}
 	}
 
-	shard, err := NewShard(recordEvent, &ShardConfig{
-		BotToken:            token,
-		GuildEvents:         event.All(),
-		DMEvents:            event.All(),
-		TotalNumberOfShards: 1,
-		IdentifyProperties: GatewayIdentifyProperties{
+	shard, err := NewShard(0, token, recordEvent,
+		discordgateway.WithGuildEvents(event.All()...),
+		discordgateway.WithDirectMessageEvents(event.All()...),
+		discordgateway.WithIdentifyConnectionProperties(&discordgateway.IdentifyConnectionProperties{
 			OS:      "linux",
 			Browser: "github.com/andersfylling/discordgateway v0",
 			Device:  "tester",
-		},
-	})
+		}),
+	)
 	if err != nil {
 		t.Fatal("failed to create shard", err)
 	}
@@ -73,7 +66,7 @@ func TestShard(t *testing.T) {
 	}
 
 	op, err := shard.EventLoop(ctx)
-	var closeErr *CloseError
+	var closeErr *discordgateway.CloseError
 	if errors.As(err, &closeErr) {
 	} else if err != nil && !(errors.Is(err, context.Canceled)) {
 		t.Errorf("expected error to be context cancellation / normal close. Got %s", err.Error())

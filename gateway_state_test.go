@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/andersfylling/discordgateway/command"
+	"github.com/andersfylling/discordgateway/internal/util"
 	"net"
 	"strconv"
 	"strings"
@@ -21,23 +22,20 @@ import (
 	"github.com/andersfylling/discordgateway/opcode"
 )
 
-func NewGatewayState() *GatewayState {
-	return NewGatewayStateWithSeqNumber(0)
+var defaultOptions = []Option{
+	WithShardID(0),
+	WithShardCount(1),
+	WithIdentifyConnectionProperties(&IdentifyConnectionProperties{}),
+	WithGuildEvents(event.All()...),
+	WithDirectMessageEvents(event.All()...),
 }
 
-var defaultGatewayStateConfig = &GatewayStateConfig{
-	BotToken:             "dsfsdf",
-	ShardID:              0,
-	TotalNumberOfShards:  1,
-	Properties:           GatewayIdentifyProperties{},
-	CommandRateLimitChan: nil,
-	GuildEvents:          event.All(),
-	DMEvents:             event.All(),
-}
+func NewDefaultGatewayState(extraOptions ...Option) *GatewayState {
+	gs, err := NewGatewayState("token", append(defaultOptions, extraOptions...)...)
+	if err != nil {
+		panic(err)
+	}
 
-func NewGatewayStateWithSeqNumber(seq int64) *GatewayState {
-	gs := NewGatewayClient(defaultGatewayStateConfig)
-	gs.state = newStateWithSeqNumber(seq)
 	return gs
 }
 
@@ -52,14 +50,14 @@ func TestCloseError_Error(t *testing.T) {
 }
 
 func TestGatewayState_IntentGeneration(t *testing.T) {
-	gs := NewGatewayState()
+	gs := NewDefaultGatewayState()
 	if gs.intents != intent.Sum {
 		t.Fatal("all intents should be activated")
 	}
 }
 
 func TestGatewayState_Write(t *testing.T) {
-	client := NewGatewayState()
+	client := NewDefaultGatewayState()
 	mock := &IOMock{
 		writeChan: make(chan []byte, 2),
 	}
@@ -72,7 +70,7 @@ func TestGatewayState_Write(t *testing.T) {
 }
 
 func TestGatewayState_Read(t *testing.T) {
-	client := NewGatewayState()
+	client := NewDefaultGatewayState()
 
 	t.Run("ready", func(t *testing.T) {
 		t.Run("stores-session-id", func(t *testing.T) {
@@ -110,7 +108,7 @@ func TestGatewayState_Read(t *testing.T) {
 func TestGatewayState_Heartbeat(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		finalSeqNumber := int64(156356)
-		client := NewGatewayStateWithSeqNumber(finalSeqNumber)
+		client := NewDefaultGatewayState(WithSequenceNumber(finalSeqNumber))
 		mock := &IOMock{
 			writeChan: make(chan []byte, 2),
 		}
@@ -137,8 +135,7 @@ func TestGatewayState_Heartbeat(t *testing.T) {
 }
 func TestGatewayState_Identify(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		client := NewGatewayState()
-		client.conf.GuildEvents = intent.Events(intent.Guilds)
+		client := NewDefaultGatewayState(WithGuildEvents(intent.Events(intent.Guilds)...))
 		mock := &IOMock{
 			writeChan: make(chan []byte, 2),
 		}
@@ -156,7 +153,7 @@ func TestGatewayState_Identify(t *testing.T) {
 			t.Fatal("message written to pipe is invalid", err)
 		}
 
-		var identify *GatewayIdentify
+		var identify *Identify
 		if err := json.Unmarshal(packet.Data, &identify); err != nil {
 			t.Fatal("invalid json payload", err)
 		}
@@ -165,21 +162,21 @@ func TestGatewayState_Identify(t *testing.T) {
 			t.Errorf("unexpect %s. Got '%+v', wants '%+v'", name, got, wants)
 		}
 
-		if client.conf.BotToken != identify.BotToken {
-			incorrect("Token", identify.BotToken, client.conf.BotToken)
+		if client.botToken != identify.BotToken {
+			incorrect("Token", identify.BotToken, client.botToken)
 		}
-		if client.conf.ShardID != ShardID(identify.Shard[0]) {
-			incorrect("ShardID", identify.Shard[0], client.conf.ShardID)
+		if client.shardID != ShardID(identify.Shard[0]) {
+			incorrect("ShardID", identify.Shard[0], client.shardID)
 		}
-		if client.conf.TotalNumberOfShards > 0 && client.conf.TotalNumberOfShards != identify.Shard[1] {
-			incorrect("ShardCount", identify.Shard[1], client.conf.TotalNumberOfShards)
+		if client.totalNumberOfShards > 0 && client.totalNumberOfShards != identify.Shard[1] {
+			incorrect("ShardCount", identify.Shard[1], client.totalNumberOfShards)
 		}
 		if client.intents != identify.Intents {
-			incorrect("Intents", identify.Intents, client.conf.Intents)
+			incorrect("Intents", identify.Intents, client.intents)
 		}
 	})
 	t.Run("failed-to-write", func(t *testing.T) {
-		client := NewGatewayState()
+		client := NewDefaultGatewayState()
 		client.sessionID = "sgrtxfh"
 		closedMock := &IOMockWithClosedConnection{IOMock{}}
 
@@ -192,8 +189,7 @@ func TestGatewayState_Identify(t *testing.T) {
 }
 func TestGatewayState_Resume(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		client := NewGatewayState()
-		client.conf.GuildEvents = intent.Events(intent.Guilds)
+		client := NewDefaultGatewayState(WithGuildEvents(intent.Events(intent.Guilds)...))
 		client.sessionID = "kdfjhsdk"
 		mock := &IOMock{
 			writeChan: make(chan []byte, 2),
@@ -212,7 +208,7 @@ func TestGatewayState_Resume(t *testing.T) {
 			t.Fatal("message written to pipe is invalid", err)
 		}
 
-		var resume *GatewayResume
+		var resume *Resume
 		if err := json.Unmarshal(packet.Data, &resume); err != nil {
 			t.Fatal("invalid json payload", err)
 		}
@@ -221,19 +217,18 @@ func TestGatewayState_Resume(t *testing.T) {
 			t.Errorf("unexpect %s. Got '%+v', wants '%+v'", name, v1, v2)
 		}
 
-		if client.conf.BotToken != resume.BotToken {
-			incorrect("Token", resume.BotToken, client.conf.BotToken)
+		if client.botToken != resume.BotToken {
+			incorrect("Token", resume.BotToken, client.botToken)
 		}
 		if client.sessionID != resume.SessionID {
 			incorrect("sessionID", resume.SessionID, client.sessionID)
 		}
-		if client.conf.BotToken != resume.BotToken {
+		if client.botToken != resume.BotToken {
 			incorrect("sequence number", resume.SequenceNumber, client.SequenceNumber())
 		}
 	})
 	t.Run("premature", func(t *testing.T) {
-		client := NewGatewayState()
-		client.sessionID = ""
+		client := NewDefaultGatewayState()
 		mock := &IOMock{
 			writeChan: make(chan []byte, 2),
 		}
@@ -243,8 +238,7 @@ func TestGatewayState_Resume(t *testing.T) {
 		}
 	})
 	t.Run("failed-to-write", func(t *testing.T) {
-		client := NewGatewayState()
-		client.sessionID = "sgrtxfh"
+		client := NewDefaultGatewayState(WithSessionID("sgrtxfh"))
 		closedMock := &IOMockWithClosedConnection{IOMock{}}
 
 		if err := client.Resume(closedMock); err == nil {
@@ -256,8 +250,7 @@ func TestGatewayState_Resume(t *testing.T) {
 }
 func TestGatewayState_InvalidateSession(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		client := NewGatewayState()
-		client.sessionID = "sgrtxfh"
+		client := NewDefaultGatewayState(WithSessionID("sgrtxfh"))
 		mock := &IOMock{
 			writeChan: make(chan []byte, 2),
 		}
@@ -282,8 +275,7 @@ func TestGatewayState_InvalidateSession(t *testing.T) {
 		})
 	})
 	t.Run("failed", func(t *testing.T) {
-		client := NewGatewayState()
-		client.sessionID = "sgrtxfh"
+		client := NewDefaultGatewayState(WithSessionID("sgrtxfh"))
 		closedMock := &IOMockWithClosedConnection{IOMock{}}
 
 		client.InvalidateSession(closedMock)
@@ -295,13 +287,12 @@ func TestGatewayState_InvalidateSession(t *testing.T) {
 
 func TestGatewayState_DemultiplexCloseCode(t *testing.T) {
 	t.Run("should invalidate session", func(t *testing.T) {
-		client := NewGatewayState()
-		client.sessionID = "sgrtxfh"
+		client := NewDefaultGatewayState(WithSessionID("sgrtxfh"))
 		mock := &IOMock{
 			writeChan: make(chan []byte, 2),
 		}
 
-		if err := client.DemultiplexCloseCode(closecode.InvalidSeq, "sf", mock); err == nil {
+		if err := client.ProcessCloseCode(closecode.InvalidSeq, "sf", mock); err == nil {
 			t.Fatal("missing error")
 		}
 
@@ -324,13 +315,12 @@ func TestGatewayState_DemultiplexCloseCode(t *testing.T) {
 		})
 	})
 	t.Run("should allow session to reconnect", func(t *testing.T) {
-		client := NewGatewayState()
-		client.sessionID = "sgrtxfh"
+		client := NewDefaultGatewayState(WithSessionID("sgrtxfh"))
 		mock := &IOMock{
 			writeChan: make(chan []byte, 2),
 		}
 
-		if err := client.DemultiplexCloseCode(closecode.ClientReconnecting, "sf", mock); err == nil {
+		if err := client.ProcessCloseCode(closecode.ClientReconnecting, "sf", mock); err == nil {
 			t.Fatal("missing error")
 		}
 
@@ -355,11 +345,10 @@ func TestGatewayState_DemultiplexCloseCode(t *testing.T) {
 
 func TestGatewayState_Process(t *testing.T) {
 	t.Run("should fail on sequence skipping", func(t *testing.T) {
-		client := NewGatewayState()
-		client.sessionID = "sgrtxfh"
-		client.whitelist = map[event.Type]struct{}{
-			event.MessageCreate: emptyStruct,
-		}
+		client := NewDefaultGatewayState(WithSessionID("sgrtxfh"))
+		client.whitelist = util.NewEventSet()
+		client.whitelist.Add(event.MessageCreate)
+
 		mock := &IOMock{
 			writeChan: make(chan []byte, 2),
 			readChan:  make(chan []byte, 2),
@@ -369,7 +358,7 @@ func TestGatewayState_Process(t *testing.T) {
 		payloadStr := fmt.Sprintf(`{"op":0,"d":{"id":"%d"},"t":"%s","s":%d}`, messageID, event.MessageCreate, client.SequenceNumber()+2)
 		payload := []byte(payloadStr)
 
-		_, redundant, err := client.Process(bytes.NewReader(payload), mock, mock)
+		_, redundant, err := client.ProcessNextMessage(bytes.NewReader(payload), mock, mock)
 		if err == nil {
 			t.Fatal("missing error")
 		}
@@ -395,11 +384,11 @@ func TestGatewayState_Process(t *testing.T) {
 		})
 	})
 	t.Run("should fail on unknown error", func(t *testing.T) {
-		client := NewGatewayState()
+		client := NewDefaultGatewayState()
 		client.sessionID = "sgrtxfh"
-		client.whitelist = map[event.Type]struct{}{
-			event.MessageCreate: emptyStruct,
-		}
+		client.whitelist = util.NewEventSet()
+		client.whitelist.Add(event.MessageCreate)
+
 		mock := &IOMock{
 			writeChan: make(chan []byte, 2),
 			readChan:  make(chan []byte, 2),
@@ -409,7 +398,7 @@ func TestGatewayState_Process(t *testing.T) {
 		payloadStr := fmt.Sprintf(`{"op":0,"d":{"id":"%d"},"t":"%s","s":%d}`, messageID, event.MessageCreate, client.SequenceNumber()+2)
 		payload := []byte(payloadStr + "}}}}}}") // malformed json
 
-		_, redundant, err := client.Process(bytes.NewReader(payload), mock, mock)
+		_, redundant, err := client.ProcessNextMessage(bytes.NewReader(payload), mock, mock)
 		if err == nil {
 			t.Fatal("missing error")
 		}
@@ -418,11 +407,11 @@ func TestGatewayState_Process(t *testing.T) {
 		}
 	})
 	t.Run("dispatch whitelisted event", func(t *testing.T) {
-		client := NewGatewayState()
+		client := NewDefaultGatewayState()
 		client.sessionID = "sgrtxfh"
-		client.whitelist = map[event.Type]struct{}{
-			event.MessageCreate: emptyStruct,
-		}
+		client.whitelist = util.NewEventSet()
+		client.whitelist.Add(event.MessageCreate)
+
 		mock := &IOMock{
 			writeChan: make(chan []byte, 2),
 			readChan:  make(chan []byte, 2),
@@ -432,7 +421,7 @@ func TestGatewayState_Process(t *testing.T) {
 		payloadStr := fmt.Sprintf(`{"op":0,"d":{"id":"%d"},"t":"%s","s":%d}`, messageID, event.MessageCreate, client.SequenceNumber()+1)
 		data := []byte(payloadStr)
 
-		payload, redundant, err := client.Process(bytes.NewReader(data), mock, mock)
+		payload, redundant, err := client.ProcessNextMessage(bytes.NewReader(data), mock, mock)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -448,9 +437,9 @@ func TestGatewayState_Process(t *testing.T) {
 		}
 	})
 	t.Run("dispatch blacklisted event", func(t *testing.T) {
-		client := NewGatewayState()
+		client := NewDefaultGatewayState()
 		client.sessionID = "sgrtxfh"
-		client.whitelist = map[event.Type]struct{}{}
+		client.whitelist = util.NewEventSet()
 		mock := &IOMock{
 			writeChan: make(chan []byte, 2),
 			readChan:  make(chan []byte, 2),
@@ -460,7 +449,7 @@ func TestGatewayState_Process(t *testing.T) {
 		payloadStr := fmt.Sprintf(`{"op":0,"d":{"id":"%d"},"t":"%s","s":%d}`, messageID, event.MessageCreate, client.SequenceNumber()+1)
 		data := []byte(payloadStr)
 
-		_, redundant, err := client.Process(bytes.NewReader(data), mock, mock)
+		_, redundant, err := client.ProcessNextMessage(bytes.NewReader(data), mock, mock)
 		if err != nil {
 			t.Fatal("blacklisted events should not trigger an error, just a redundancy flag")
 		}

@@ -7,9 +7,6 @@ import (
 	"github.com/andersfylling/discordgateway/event"
 )
 
-//go:generate go run internal/generate/events/main.go
-//go:generate go run internal/generate/intents/main.go
-
 type RawMessage = json.RawMessage
 
 type ShardID uint
@@ -22,27 +19,27 @@ type HandlerStruct struct {
 	Data RawMessage
 }
 
-type GatewayHello struct {
+type Hello struct {
 	HeartbeatIntervalMilli int64 `json:"heartbeat_interval"`
 }
 
-type GatewayReady struct {
+type Ready struct {
 	SessionID string `json:"session_id"`
 }
 
-type GatewayResume struct {
+type Resume struct {
 	BotToken       string `json:"token"`
 	SessionID      string `json:"session_id"`
 	SequenceNumber int64  `json:"seq"`
 }
 
-type GatewayIdentifyProperties struct {
+type IdentifyConnectionProperties struct {
 	OS      string `json:"$os"`
 	Browser string `json:"$browser"`
 	Device  string `json:"$device"`
 }
 
-type GatewayIdentify struct {
+type Identify struct {
 	BotToken       string      `json:"token"`
 	Properties     interface{} `json:"properties"`
 	Compress       bool        `json:"compress,omitempty"`

@@ -1,1 +1,6 @@
-This _dev folder is ignored when discordgateway is compiled. Just storing a few deps for dev QoL. 
+For generating events / intents, and anything else that can be read from yaml / openapi / etc.
+
+## Usage
+```bash
+cd _dev && go run .
+```

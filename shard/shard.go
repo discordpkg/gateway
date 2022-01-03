@@ -1,9 +1,10 @@
-package discordgateway
+package shard
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/andersfylling/discordgateway"
 	"github.com/andersfylling/discordgateway/command"
 	"io"
 	"net"
@@ -38,45 +39,34 @@ type ShardConfig struct {
 	ShardID             uint
 	TotalNumberOfShards uint
 
-	IdentifyProperties GatewayIdentifyProperties
+	IdentifyProperties discordgateway.IdentifyConnectionProperties
 
 	GuildEvents []event.Type
 	DMEvents    []event.Type
 
 	CommandRateLimitChan <-chan int
-	IdentifyRateLimiter  IdentifyRateLimiter
+	IdentifyRateLimiter  discordgateway.IdentifyRateLimiter
 
 	// Intents does not have to be specified as these are derived from GuildEvents
 	// and DMEvents. However, you can specify intents and it will be merged with the derived intents.
 	Intents intent.Type
 }
 
-func NewShard(handler Handler, conf *ShardConfig) (*Shard, error) {
-	gatewayConf := GatewayStateConfig{
-		BotToken:             conf.BotToken,
-		ShardID:              ShardID(conf.ShardID),
-		TotalNumberOfShards:  conf.TotalNumberOfShards,
-		Properties:           conf.IdentifyProperties,
-		GuildEvents:          conf.GuildEvents,
-		DMEvents:             conf.DMEvents,
-		CommandRateLimitChan: conf.CommandRateLimitChan,
-		IdentifyRateLimiter:  conf.IdentifyRateLimiter,
+func NewShard(shardID discordgateway.ShardID, botToken string, handler discordgateway.Handler, options ...discordgateway.Option) (*Shard, error) {
+	state, err := discordgateway.NewGatewayState(botToken, options...)
+	if err != nil {
+		return nil, err
 	}
+
 	shard := &Shard{
-		State:   NewGatewayClient(&gatewayConf),
-		handler: handler,
-	}
-	shard.State.intents |= conf.Intents
-
-	whitelistToSlice := func() (events []event.Type) {
-		for e := range shard.State.whitelist {
-			events = append(events, e)
-		}
-		return events
+		shardID:  shardID,
+		options:  append(options, discordgateway.WithShardID(shardID)),
+		botToken: botToken,
+		State:    state,
+		handler:  handler,
 	}
 
-	log.Debug("intents: ", shard.State.intents)
-	log.Debug("whitelisted events: ", whitelistToSlice())
+	log.Debug(shard.State.String())
 
 	return shard, nil
 }
@@ -93,11 +83,15 @@ func (i *ioWriteFlusher) Write(p []byte) (n int, err error) {
 }
 
 type Shard struct {
+	options  []discordgateway.Option
+	botToken string
+
 	Conn        net.Conn
-	State       *GatewayState
-	handler     Handler
+	State       *discordgateway.GatewayState
+	handler     discordgateway.Handler
 	textWriter  io.Writer
 	closeWriter io.Writer
+	shardID     discordgateway.ShardID
 }
 
 // Dial sets up the websocket connection before identifying with the gateway.
@@ -106,7 +100,7 @@ type Shard struct {
 //  "wss://gateway.discord.gg/?v=9"                 => invalid
 //  "wss://gateway.discord.gg/?v=9&encoding=json"   => valid
 func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn, err error) {
-	URLString, err = ValidateDialURL(URLString)
+	URLString, err = discordgateway.ValidateDialURL(URLString)
 	if err != nil {
 		return nil, err
 	}
@@ -172,16 +166,17 @@ func writeClose(closer func(io.Writer) error, conn net.Conn, reason string) erro
 }
 
 func (s *Shard) EventLoop(ctx context.Context) (opcode.Type, error) {
-	defer func() {
+	defer func() (err error) {
 		if s.State.HaveSessionID() {
-			s.State = &GatewayState{
-				conf:      s.State.conf,
-				state:     newStateWithSeqNumber(s.State.SequenceNumber()),
-				sessionID: s.State.sessionID,
-			}
+			options := append(s.options, discordgateway.WithSequenceNumber(s.State.SequenceNumber()))
+			options = append(options, discordgateway.WithSessionID(s.State.SessionID()))
+
+			s.State, err = discordgateway.NewGatewayState(s.botToken, options...)
 		} else {
-			s.State = NewGatewayClient(&s.State.conf)
+			s.State, err = discordgateway.NewGatewayState(s.botToken, s.options...)
 		}
+
+		return err
 	}()
 
 	life, kill := context.WithCancel(context.Background())
@@ -238,7 +233,7 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.Type, error) {
 						_ = s.Conn.Close()
 						return opcode.Invalid, &FrameError{Err: net.ErrClosed}
 					}
-					err = s.State.DemultiplexCloseCode(closecode.Type(errClose.Code), errClose.Reason, s.closeWriter)
+					err = s.State.ProcessCloseCode(closecode.Type(errClose.Code), errClose.Reason, s.closeWriter)
 					return opcode.Invalid, err
 				} else {
 					return opcode.Invalid, &FrameError{Err: err}
@@ -254,7 +249,7 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.Type, error) {
 			continue
 		}
 
-		payload, redundant, err := s.State.Process(&rd, s.textWriter, s.closeWriter)
+		payload, redundant, err := s.State.ProcessNextMessage(&rd, s.textWriter, s.closeWriter)
 		if redundant {
 			continue
 		}
@@ -265,12 +260,12 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.Type, error) {
 		switch payload.Op {
 		case opcode.Dispatch:
 			if s.handler != nil {
-				s.handler(s.State.conf.ShardID, payload.EventName, payload.Data)
+				s.handler(s.shardID, payload.EventName, payload.Data)
 			}
 		case opcode.InvalidSession, opcode.Reconnect:
 			return payload.Op, nil
 		case opcode.Hello:
-			var hello *GatewayHello
+			var hello *discordgateway.Hello
 			if err := json.Unmarshal(payload.Data, &hello); err != nil {
 				return payload.Op, fmt.Errorf("failed to extract heartbeat from hello message. %w", err)
 			}
@@ -294,7 +289,7 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.Type, error) {
 type heart struct {
 	interval          time.Duration
 	conn              net.Conn
-	shard             *GatewayState
+	shard             *discordgateway.GatewayState
 	forcedReadTimeout *atomic.Bool
 	gotAck            atomic.Bool
 }
