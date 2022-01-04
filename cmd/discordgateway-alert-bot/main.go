@@ -5,9 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/andersfylling/discordgateway/shard"
-	"io"
-	"net"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/andersfylling/disgord"
@@ -16,7 +15,6 @@ import (
 	"github.com/andersfylling/discordgateway"
 	"github.com/andersfylling/discordgateway/event"
 	"github.com/andersfylling/discordgateway/log"
-	"github.com/andersfylling/discordgateway/opcode"
 )
 
 const EnvDiscordToken = "DISCORD_TOKEN"
@@ -93,7 +91,7 @@ func listen(logger *logrus.Logger, token string) {
 	shard, err := shard.NewShard(0, token, nil,
 		discordgateway.WithGuildEvents(event.All()...),
 		discordgateway.WithIdentifyConnectionProperties(&discordgateway.IdentifyConnectionProperties{
-			OS:      "linux",
+			OS:      runtime.GOOS,
 			Browser: "github.com/andersfylling/discordgateway v0",
 			Device:  "tester",
 		}),
@@ -107,54 +105,23 @@ reconnect:
 		logger.Fatalf("failed to open websocket connection. %w", err)
 	}
 
-	if op, err := shard.EventLoop(context.Background()); err != nil {
-		var discordErr *discordgateway.CloseError
-		if errors.As(err, &discordErr) {
-			logger.Infof("event loop exited with close code: %d", discordErr.Code)
-			switch discordErr.Code {
-			case 1001, 4000:
-				logger.Debug("creating resume client")
-				if !shard.State.HaveSessionID() {
-					logger.Fatal("expected session id to exist")
-				}
-				goto reconnect
-			case 4007, 4009:
-				logger.Debug("forcing new identify")
-				if shard.State.HaveSessionID() {
-					logger.Fatal("expected session id to not exist")
-				}
-				goto reconnect
-			case 4001, 4002, 4003, 4004, 4005, 4008, 4010, 4011, 4012, 4013, 4014:
-			default:
-				logger.Errorf("unhandled close error, with discord op code(%d): %d", op, discordErr.Code)
-			}
-		}
-		var errClosed *discordgateway.CloseError
-		if errors.As(err, &errClosed) || errors.Is(err, net.ErrClosed) || errors.Is(err, io.ErrClosedPipe) {
-			logger.Debug("errClosed - creating resume client")
-			if !shard.State.HaveSessionID() {
-				logger.Fatal("expected session id to exist")
+	// process websocket messages as they arrive and trigger the handler whenever relevant
+	if err = shard.EventLoop(context.Background()); err != nil {
+		var discordErr *discordgateway.DiscordError
+		reconnect := errors.As(err, &discordErr) && discordErr.Reconnect()
+
+		var wsErr *shard.WebsocketError
+		reconnect = reconnect || errors.As(err, &wsErr)
+
+		if reconnect || !shard.State.HaveSessionID() {
+			logger.Infof("reconnecting: %s", discordErr.Error())
+			if err := shard.PrepareForReconnect(); err != nil {
+				logger.Fatal("failed to prepare for reconnect:", err)
 			}
 			goto reconnect
-		}
-		logger.Error("event loop stopped: ", err)
-	} else {
-		logger.Infof("event loop exited with op code: %s", op)
-		switch op {
-		case opcode.Reconnect:
-			if !shard.State.HaveSessionID() {
-				logger.Fatal("expected session id to exist")
-			}
-			goto reconnect
-		case opcode.InvalidSession:
-			if shard.State.HaveSessionID() {
-				logger.Fatal("expected session id to not exist")
-			}
-			goto reconnect
-		default:
-			logger.Error("shutting down without a opcode or error")
 		}
 	}
-	logger.Warn("STOPPED")
+
+	logger.Error("event loop stopped: ", err)
 	<-time.After(5 * time.Second)
 }

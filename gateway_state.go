@@ -18,13 +18,30 @@ import (
 	"github.com/andersfylling/discordgateway/opcode"
 )
 
-type CloseError struct {
-	Code   closecode.Type
-	Reason string
+type DiscordError struct {
+	CloseCode closecode.Type
+	OpCode    opcode.Type
+	Reason    string
 }
 
-func (c *CloseError) Error() string {
-	return fmt.Sprintf("%d: %s", c.Code, c.Reason)
+func (c *DiscordError) Error() string {
+	return fmt.Sprintf("[%d | %d]: %s", c.CloseCode, c.OpCode, c.Reason)
+}
+
+func (c DiscordError) Reconnect() bool {
+	_, reconnectCloseCode := map[closecode.Type]bool{
+		closecode.ClientReconnecting: true,
+		closecode.UnknownError:       true,
+		closecode.InvalidSeq:         true,
+		closecode.SessionTimedOut:    true,
+	}[c.CloseCode]
+
+	_, reconnectOpCode := map[opcode.Type]bool{
+		opcode.Reconnect: true,
+		opcode.Resume:    true,
+	}[c.OpCode]
+
+	return reconnectCloseCode || reconnectOpCode
 }
 
 func NewGatewayState(botToken string, options ...Option) (*GatewayState, error) {
@@ -222,7 +239,7 @@ func (gs *GatewayState) ProcessCloseCode(code closecode.Type, reason string, clo
 	default:
 		gs.InvalidateSession(closeWriter)
 	}
-	return &CloseError{Code: code, Reason: reason}
+	return &DiscordError{CloseCode: code, Reason: reason}
 }
 
 // Heartbeat Close method may be used if Write fails

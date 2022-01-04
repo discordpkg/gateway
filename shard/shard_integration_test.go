@@ -66,7 +66,7 @@ func TestShard(t *testing.T) {
 	}
 
 	op, err := shard.EventLoop(ctx)
-	var closeErr *discordgateway.CloseError
+	var closeErr *discordgateway.DiscordError
 	if errors.As(err, &closeErr) {
 	} else if err != nil && !(errors.Is(err, context.Canceled)) {
 		t.Errorf("expected error to be context cancellation / normal close. Got %s", err.Error())

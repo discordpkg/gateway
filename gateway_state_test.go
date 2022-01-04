@@ -40,7 +40,7 @@ func NewDefaultGatewayState(extraOptions ...Option) *GatewayState {
 }
 
 func TestCloseError_Error(t *testing.T) {
-	err := &CloseError{Code: closecode.AlreadyAuthenticated, Reason: "testing"}
+	err := &DiscordError{CloseCode: closecode.AlreadyAuthenticated, Reason: "testing"}
 	if !strings.Contains(err.Error(), strconv.Itoa(int(closecode.AlreadyAuthenticated))) {
 		t.Error("missing close code")
 	}

@@ -24,6 +24,18 @@ import (
 	"github.com/andersfylling/discordgateway/opcode"
 )
 
+type WebsocketError struct {
+	Err error
+}
+
+func (e *WebsocketError) Error() string {
+	return fmt.Errorf("websocket logic failed: %w", e.Err).Error()
+}
+
+func (e *WebsocketError) Unwrap() error {
+	return e.Err
+}
+
 type FrameError struct {
 	Unwanted bool
 	Err      error
@@ -165,34 +177,35 @@ func writeClose(closer func(io.Writer) error, conn net.Conn, reason string) erro
 	return nil
 }
 
-func (s *Shard) EventLoop(ctx context.Context) (opcode.Type, error) {
-	defer func() (err error) {
-		if s.State.HaveSessionID() {
-			options := append(s.options, discordgateway.WithSequenceNumber(s.State.SequenceNumber()))
-			options = append(options, discordgateway.WithSessionID(s.State.SessionID()))
-
-			s.State, err = discordgateway.NewGatewayState(s.botToken, options...)
-		} else {
-			s.State, err = discordgateway.NewGatewayState(s.botToken, s.options...)
+func (s *Shard) EventLoop(ctx context.Context) error {
+	defer func() {
+		if !s.State.Closed() {
+			_ = s.State.WriteRestartClose(s.closeWriter)
+			_ = s.Conn.Close()
 		}
-
-		return err
 	}()
 
+	return s.eventLoop(ctx)
+}
+
+func (s *Shard) PrepareForReconnect() error {
+	options := s.options
+	if s.State.HaveSessionID() {
+		// setup a resume attempt
+		options = append(options, discordgateway.WithSequenceNumber(s.State.SequenceNumber()))
+		options = append(options, discordgateway.WithSessionID(s.State.SessionID()))
+	}
+
+	var err error
+	s.State, err = discordgateway.NewGatewayState(s.botToken, options...)
+	return err
+}
+
+func (s *Shard) eventLoop(ctx context.Context) error {
 	life, kill := context.WithCancel(context.Background())
 	defer func() {
 		kill()
 	}()
-
-	closeConnection := func() {
-		if s.State.Closed() {
-			return
-		}
-
-		_ = s.State.WriteRestartClose(s.closeWriter)
-		_ = s.Conn.Close()
-	}
-	defer closeConnection()
 
 	controlHandler := wsutil.ControlFrameHandler(s.Conn, ws.StateClientSide)
 	rd := wsutil.Reader{
@@ -213,14 +226,14 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.Type, error) {
 			const ioTimeoutMessage = "i/o timeout"
 			errMsg := err.Error()
 			if strings.Contains(errMsg, ioTimeoutMessage) && forcedReadTimeout.Load() {
-				return opcode.Invalid, &FrameError{Err: net.ErrClosed}
+				return &WebsocketError{Err: net.ErrClosed}
 			} else {
 				closedConnection := strings.Contains(errMsg, "use of closed network connection")
 				closedConnection = closedConnection || strings.Contains(errMsg, "use of closed connection")
 				if closedConnection || errors.Is(err, io.EOF) {
-					return opcode.Invalid, &FrameError{Err: net.ErrClosed}
+					return &WebsocketError{Err: net.ErrClosed}
 				} else {
-					return opcode.Invalid, &FrameError{Err: err}
+					return &WebsocketError{Err: err}
 				}
 			}
 		}
@@ -231,12 +244,11 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.Type, error) {
 				if errors.As(err, &errClose) {
 					if forcedReadTimeout.Load() {
 						_ = s.Conn.Close()
-						return opcode.Invalid, &FrameError{Err: net.ErrClosed}
+						return &WebsocketError{Err: net.ErrClosed}
 					}
-					err = s.State.ProcessCloseCode(closecode.Type(errClose.Code), errClose.Reason, s.closeWriter)
-					return opcode.Invalid, err
+					return s.State.ProcessCloseCode(closecode.Type(errClose.Code), errClose.Reason, s.closeWriter)
 				} else {
-					return opcode.Invalid, &FrameError{Err: err}
+					return &WebsocketError{Err: err}
 				}
 			}
 			continue
@@ -244,7 +256,7 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.Type, error) {
 		if hdr.OpCode&ws.OpText == 0 {
 			// discord only uses text, even for heartbeats / ping/pong frames
 			if err := rd.Discard(); err != nil {
-				return opcode.Invalid, &FrameError{Unwanted: true, Err: err}
+				return &WebsocketError{Err: err}
 			}
 			continue
 		}
@@ -254,7 +266,7 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.Type, error) {
 			continue
 		}
 		if err != nil {
-			return payload.Op, err
+			return err
 		}
 
 		switch payload.Op {
@@ -263,11 +275,11 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.Type, error) {
 				s.handler(s.shardID, payload.EventName, payload.Data)
 			}
 		case opcode.InvalidSession, opcode.Reconnect:
-			return payload.Op, nil
+			return nil
 		case opcode.Hello:
 			var hello *discordgateway.Hello
 			if err := json.Unmarshal(payload.Data, &hello); err != nil {
-				return payload.Op, fmt.Errorf("failed to extract heartbeat from hello message. %w", err)
+				return fmt.Errorf("failed to extract heartbeat from hello message. %w", err)
 			}
 
 			pulser.gotAck.Store(true)
@@ -282,8 +294,6 @@ func (s *Shard) EventLoop(ctx context.Context) (opcode.Type, error) {
 		default:
 		}
 	}
-
-	return opcode.Invalid, nil
 }
 
 type heart struct {

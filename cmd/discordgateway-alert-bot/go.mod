@@ -8,4 +8,6 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 )
 
-replace github.com/andersfylling/discordgateway => ../../
+replace (
+	github.com/andersfylling/discordgateway => ../../
+)
