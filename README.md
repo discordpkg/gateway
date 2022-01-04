@@ -86,7 +86,7 @@ until the connection is lost or a process failed (json unmarshal/marshal, websoc
 
 You can use the helper methods for the DiscordError to decide when to reconnect:
 ```go
-reconnect:
+reconnectStage:
     if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
         log.Fatal("failed to open websocket connection. ", err)
     }
@@ -104,7 +104,7 @@ reconnect:
          if err := shard.PrepareForReconnect(); err != nil {
             logger.Fatal("failed to prepare for reconnect:", err)
          }
-         goto reconnect
+         goto reconnectStage
       }
    }
 }
@@ -112,7 +112,7 @@ reconnect:
 
 Or manually check the close code, operation code, or error:
 ```go
-reconnect:
+reconnectStage:
    if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
       log.Fatal("failed to open websocket connection. ", err)
    }
@@ -127,7 +127,7 @@ reconnect:
             if err := shard.PrepareForReconnect(); err != nil {
                 logger.Fatal("failed to prepare for reconnect:", err)
             }
-            goto reconnect
+            goto reconnectStage
          case 4001, 4002, 4003, 4004, 4005, 4008, 4010, 4011, 4012, 4013, 4014:
          default:
             log.Error(fmt.Errorf("unhandled close error, with discord op code(%d): %d", op, discordErr.Code))
@@ -139,13 +139,13 @@ reconnect:
          if err := shard.PrepareForReconnect(); err != nil {
             logger.Fatal("failed to prepare for reconnect:", err)
          }
-         goto reconnect
+         goto reconnectStage
       }
    } else {
       if err := shard.PrepareForReconnect(); err != nil {
         logger.Fatal("failed to prepare for reconnect:", err)
       }
-      goto reconnect
+      goto reconnectStage
    }
 }
 ```
