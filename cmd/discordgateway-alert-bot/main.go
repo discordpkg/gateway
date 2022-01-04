@@ -64,13 +64,13 @@ func main() {
 		BotToken: token,
 	})
 	logger.Info("Disgord config valid")
-	// _, _ = client.BotAuthorizeURL()
-	// if err != nil {
-	// 	logrus.Fatal("unable to generate authorization url: ", err)
-	// } else {
-	// 	_, _ = client.SendMsg(792482633438199860, fmt.Sprintf("<%s>", u.String()))
-	// 	logrus.Printf("authorize: %s\n\n", u)
-	// }
+
+	u, err := client.BotAuthorizeURL(0, nil)
+	if err != nil {
+		logrus.Fatal("unable to generate authorization url: ", err)
+	} else {
+		logrus.Printf("authorize: %s\n\n", u)
+	}
 
 	hook := &errorHook{
 		discordClient: client,
@@ -107,13 +107,17 @@ reconnect:
 
 	// process websocket messages as they arrive and trigger the handler whenever relevant
 	if err = shard.EventLoop(context.Background()); err != nil {
+		var reconnect bool
+
 		var discordErr *discordgateway.DiscordError
-		reconnect := errors.As(err, &discordErr) && discordErr.Reconnect()
+		if errors.As(err, &discordErr) {
+			reconnect = discordErr.Reconnect()
+		} else {
+			var wsErr *gatewayshard.WebsocketError
+			reconnect = errors.As(err, &wsErr) || !shard.State.HaveSessionID()
+		}
 
-		var wsErr *gatewayshard.WebsocketError
-		reconnect = reconnect || errors.As(err, &wsErr)
-
-		if reconnect || !shard.State.HaveSessionID() {
+		if reconnect {
 			logger.Infof("reconnecting: %s", discordErr.Error())
 			if err := shard.PrepareForReconnect(); err != nil {
 				logger.Fatal("failed to prepare for reconnect:", err)
