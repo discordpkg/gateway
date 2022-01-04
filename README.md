@@ -43,61 +43,110 @@ see [DESIGN.md](DESIGN.md)
 
 Here no handler is registered. Simply replace `nil` with a function pointer to read events (events with operation code 0).
 
+Create a shard instance using the `gatewayshard` package:
+
 ```go
 package main
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"github.com/andersfylling/discordgateway"
-	"github.com/andersfylling/discordgateway/event"
-	"github.com/andersfylling/discordgateway/log"
-	"net"
-	"os"
+   "context"
+   "errors"
+   "fmt"
+   "github.com/andersfylling/discordgateway"
+   "github.com/andersfylling/discordgateway/event"
+   "github.com/andersfylling/discordgateway/intent"
+   "github.com/andersfylling/discordgateway/log"
+   "github.com/andersfylling/discordgateway/gatewayshard"
+   "net"
+   "os"
 )
 
 func main() {
-	shard, err := discordgateway.NewShard(nil, &discordgateway.ShardConfig{
-		BotToken:            os.Getenv("DISCORD_TOKEN"),
-		GuildEvents:         event.All(),
-		DMEvents:            nil,
-		TotalNumberOfShards: 1,
-		IdentifyProperties: discordgateway.GatewayIdentifyProperties{
-			OS:      "linux",
-			Browser: "github.com/andersfylling/discordgateway v0",
-			Device:  "tester",
-		},
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+   shard, err := gatewayshard.NewShard(nil, &discordgateway.ShardConfig{
+      BotToken:            os.Getenv("DISCORD_TOKEN"),
+      GuildEvents:         event.All(),
+      DirectMessageEvents: intent.Events(intent.DirectMessageReactions)
+      TotalNumberOfShards: 1, 
+      ShardID:             0,
+      IdentifyProperties:  discordgateway.GatewayIdentifyProperties{
+         OS:      "linux",
+         Browser: "github.com/andersfylling/discordgateway v0",
+         Device:  "tester",
+      },
+   })
+   if err != nil {
+      log.Fatal(err)
+   }
 
+   dialUrl := "wss://gateway.discord.gg/?v=9&encoding=json"
+```
+
+You can then open a connection to discord and start listening for events. The event loop will continue to run
+until the connection is lost or a process failed (json unmarshal/marshal, websocket frame issue, etc.)
+
+You can use the helper methods for the DiscordError to decide when to reconnect:
+```go
 reconnect:
-	if _, err := shard.Dial(context.Background(), "wss://gateway.discord.gg/?v=9&encoding=json"); err != nil {
-		log.Fatal("failed to open websocket connection. ", err)
-	}
+    if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
+        log.Fatal("failed to open websocket connection. ", err)
+    }
 
-	if op, err := shard.EventLoop(context.Background()); err != nil {
-		var discordErr *discordgateway.CloseError
-		if errors.As(err, &discordErr) {
-			switch discordErr.Code {
-			case 1001, 4000: // will initiate a resume
-				fallthrough
-			case 4007, 4009: // will do a fresh identify
-				goto reconnect
-			case 4001, 4002, 4003, 4004, 4005, 4008, 4010, 4011, 4012, 4013, 4014:
-			default:
-				log.Error(fmt.Errorf("unhandled close error, with discord op code(%d): %d", op, discordErr.Code))
-			}
-		}
-		if errors.Is(err, net.ErrClosed) {
-			log.Debug("connection closed/lost .. will try to reconnect")
-			goto reconnect
-		}
-	} else {
-		goto reconnect
-	}
+   if err = shard.EventLoop(context.Background()); err != nil {
+      reconnect := true
+
+      var discordErr *discordgateway.DiscordError
+      if errors.As(err, &discordErr) {
+         reconnect = discordErr.Reconnect()
+      }
+
+      if reconnect {
+         logger.Infof("reconnecting: %s", discordErr.Error())
+         if err := shard.PrepareForReconnect(); err != nil {
+            logger.Fatal("failed to prepare for reconnect:", err)
+         }
+         goto reconnect
+      }
+   }
+}
+```
+
+Or manually check the close code, operation code, or error:
+```go
+reconnect:
+   if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
+      log.Fatal("failed to open websocket connection. ", err)
+   }
+
+   if op, err := shard.EventLoop(context.Background()); err != nil {
+      var discordErr *discordgateway.CloseError
+      if errors.As(err, &discordErr) {
+         switch discordErr.Code {
+         case 1001, 4000: // will initiate a resume
+            fallthrough
+         case 4007, 4009: // will do a fresh identify
+            if err := shard.PrepareForReconnect(); err != nil {
+                logger.Fatal("failed to prepare for reconnect:", err)
+            }
+            goto reconnect
+         case 4001, 4002, 4003, 4004, 4005, 4008, 4010, 4011, 4012, 4013, 4014:
+         default:
+            log.Error(fmt.Errorf("unhandled close error, with discord op code(%d): %d", op, discordErr.Code))
+         }
+      }
+      if errors.Is(err, net.ErrClosed) {
+         log.Debug("connection closed/lost .. will try to reconnect")
+
+         if err := shard.PrepareForReconnect(); err != nil {
+            logger.Fatal("failed to prepare for reconnect:", err)
+         }
+         goto reconnect
+      }
+   } else {
+      if err := shard.PrepareForReconnect(); err != nil {
+        logger.Fatal("failed to prepare for reconnect:", err)
+      }
+      goto reconnect
+   }
 }
 ```
 
@@ -114,37 +163,34 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/andersfylling/discordgateway"
 	"github.com/andersfylling/discordgateway/event"
-	"github.com/andersfylling/discordgateway/log"
 	"github.com/andersfylling/discordgateway/opcode"
+	"github.com/andersfylling/discordgateway/command"
+	"github.com/andersfylling/discordgateway/gatewayshard"
 	"os"
 )
 
 func main() {
-	shard, err := discordgateway.NewShard(nil, &discordgateway.ShardConfig{
-		BotToken:            os.Getenv("DISCORD_TOKEN"),
-		GuildEvents:         event.All(),
-		TotalNumberOfShards: 1,
-		IdentifyProperties: discordgateway.GatewayIdentifyProperties{
-			OS:      "linux",
-			Browser: "github.com/andersfylling/discordgateway v0",
-			Device:  "tester",
-		},
+	shard, err := gatewayshard.NewShard(nil, &discordgateway.ShardConfig{
+		BotToken:   os.Getenv("DISCORD_TOKEN"),
+		Intents:    intent.Guilds,
 	})
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
-	if _, err := shard.Dial(context.Background(), "wss://gateway.discord.gg/?v=9&encoding=json"); err != nil {
-		log.Fatal("failed to open websocket connection. ", err)
+	dialUrl := "wss://gateway.discord.gg/?v=9&encoding=json"
+	if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
+       panic(fmt.Errorf("failed to open websocket connection. ", err))
 	}
 
    // ...
    
 	req := `{"guild_id":"23423","limit":0,"query":""}`
 	if err := shard.Write(command.RequestGuildMembers, []byte(req)); err != nil {
-		log.Fatal("failed to request guild members", err)
+       panic(fmt.Errorf("failed to request guild members", err))
     }
     
 }

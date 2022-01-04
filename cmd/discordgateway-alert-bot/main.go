@@ -113,8 +113,7 @@ reconnect:
 		if errors.As(err, &discordErr) {
 			reconnect = discordErr.Reconnect()
 		} else {
-			var wsErr *gatewayshard.WebsocketError
-			reconnect = errors.As(err, &wsErr) || !shard.State.HaveSessionID()
+			reconnect = true
 		}
 
 		if reconnect {
