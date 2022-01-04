@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/andersfylling/discordgateway/shard"
+	"github.com/andersfylling/discordgateway/gatewayshard"
 	"os"
 	"runtime"
 	"time"
@@ -88,7 +88,7 @@ type DiscordEvent struct {
 func listen(logger *logrus.Logger, token string) {
 	logger.Warn("STARTED")
 
-	shard, err := shard.NewShard(0, token, nil,
+	shard, err := gatewayshard.NewShard(0, token, nil,
 		discordgateway.WithGuildEvents(event.All()...),
 		discordgateway.WithIdentifyConnectionProperties(&discordgateway.IdentifyConnectionProperties{
 			OS:      runtime.GOOS,
@@ -102,7 +102,7 @@ func listen(logger *logrus.Logger, token string) {
 
 reconnect:
 	if _, err = shard.Dial(context.Background(), "wss://gateway.discord.gg/?v=9&encoding=json"); err != nil {
-		logger.Fatalf("failed to open websocket connection. %w", err)
+		logger.Fatal(fmt.Errorf("failed to open websocket connection. %w", err))
 	}
 
 	// process websocket messages as they arrive and trigger the handler whenever relevant
@@ -110,7 +110,7 @@ reconnect:
 		var discordErr *discordgateway.DiscordError
 		reconnect := errors.As(err, &discordErr) && discordErr.Reconnect()
 
-		var wsErr *shard.WebsocketError
+		var wsErr *gatewayshard.WebsocketError
 		reconnect = reconnect || errors.As(err, &wsErr)
 
 		if reconnect || !shard.State.HaveSessionID() {
