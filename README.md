@@ -19,11 +19,8 @@
   </a>
 </p>
 
-# Ideology
+# Features
 
-[//]: # "Discord is a mess. Consistency is a luxury. And simplicity is somewhere over here or there."
-
-Features:
  - Complete control of goroutines (if desired)
  - Specify intents or GuildEvents & DirectMessageEvents
    - When events are used; intents are derived and redundant events pruned as soon as they are identified 
