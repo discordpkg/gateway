@@ -107,17 +107,15 @@ reconnect:
 
 	// process websocket messages as they arrive and trigger the handler whenever relevant
 	if err = shard.EventLoop(context.Background()); err != nil {
-		var reconnect bool
+		reconnect := true
 
 		var discordErr *discordgateway.DiscordError
 		if errors.As(err, &discordErr) {
-			reconnect = discordErr.Reconnect()
-		} else {
-			reconnect = true
+			reconnect = discordErr.CanReconnect()
 		}
 
 		if reconnect {
-			logger.Infof("reconnecting: %s", discordErr.Error())
+			logger.Info(fmt.Errorf("reconnecting: %w", err))
 			if err := shard.PrepareForReconnect(); err != nil {
 				logger.Fatal("failed to prepare for reconnect:", err)
 			}

@@ -275,7 +275,9 @@ func (s *Shard) eventLoop(ctx context.Context) error {
 				s.handler(s.shardID, payload.EventName, payload.Data)
 			}
 		case opcode.InvalidSession, opcode.Reconnect:
-			return nil
+			return &discordgateway.DiscordError{
+				OpCode: payload.Op,
+			}
 		case opcode.Hello:
 			var hello *discordgateway.Hello
 			if err := json.Unmarshal(payload.Data, &hello); err != nil {

@@ -28,20 +28,8 @@ func (c *DiscordError) Error() string {
 	return fmt.Sprintf("[%d | %d]: %s", c.CloseCode, c.OpCode, c.Reason)
 }
 
-func (c DiscordError) Reconnect() bool {
-	_, reconnectCloseCode := map[closecode.Type]bool{
-		closecode.ClientReconnecting: true,
-		closecode.UnknownError:       true,
-		closecode.InvalidSeq:         true,
-		closecode.SessionTimedOut:    true,
-	}[c.CloseCode]
-
-	_, reconnectOpCode := map[opcode.Type]bool{
-		opcode.Reconnect: true,
-		opcode.Resume:    true,
-	}[c.OpCode]
-
-	return reconnectCloseCode || reconnectOpCode
+func (c DiscordError) CanReconnect() bool {
+	return closecode.CanReconnectAfter(c.CloseCode) || opcode.CanReconnectAfter(c.OpCode)
 }
 
 func NewGatewayState(botToken string, options ...Option) (*GatewayState, error) {
