@@ -23,12 +23,12 @@
 
 [//]: # "Discord is a mess. Consistency is a luxury. And simplicity is somewhere over here or there."
 
-Philosophy/requirements:
+Features:
  - Complete control of goroutines (if desired)
- - intents are derived from GuildEvents & DMEvents, alternatively you can specify the intents directly
- - desired events must be specified in the config, others are ignored (this allows for optimizations behind the scenes)
- - You're responsible for reading all incoming data
- - Gateway commands fail if it could not be dispatched
+ - Specify intents or GuildEvents & DirectMessageEvents
+   - When events are used; intents are derived and redundant events pruned as soon as they are identified 
+ - Receive Gateway events
+ - Send Gateway commands
  - context support
  - Control over reconnect, disconnect, or behavior for handling discord errors
 
@@ -39,7 +39,7 @@ see [DESIGN.md](DESIGN.md)
 ## Simple shard example 
 > This code uses github.com/gobwas/ws, but you are free to use other
 > websocket implementations as well. You just have to write your own Shard implementation
-> and use GatewayState. See shard.go for inspiration.
+> and use GatewayState. See shard/shard.go for inspiration.
 
 Here no handler is registered. Simply replace `nil` with a function pointer to read events (events with operation code 0).
 
