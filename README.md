@@ -115,9 +115,9 @@ reconnectStage:
    }
 
    if op, err := shard.EventLoop(context.Background()); err != nil {
-      var discordErr *discordgateway.CloseError
+      var discordErr *discordgateway.DiscordError
       if errors.As(err, &discordErr) {
-         switch discordErr.Code {
+         switch discordErr.CloseCode {
          case 1001, 4000: // will initiate a resume
             fallthrough
          case 4007, 4009: // will do a fresh identify
