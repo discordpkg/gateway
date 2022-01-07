@@ -62,18 +62,15 @@ import (
 )
 
 func main() {
-   shard, err := gatewayshard.NewShard(nil, &discordgateway.ShardConfig{
-      BotToken:            os.Getenv("DISCORD_TOKEN"),
-      GuildEvents:         event.All(),
-      DirectMessageEvents: intent.Events(intent.DirectMessageReactions)
-      TotalNumberOfShards: 1, 
-      ShardID:             0,
-      IdentifyProperties:  discordgateway.GatewayIdentifyProperties{
-         OS:      "linux",
+   shard, err := gatewayshard.NewShard(0, os.Getenv("DISCORD_TOKEN"), nil,
+      discordgateway.WithGuildEvents(event.All()...),
+      discordgateway.WithDirectMessageEvents(intent.Events(intent.DirectMessageReactions)),
+      discordgateway.WithIdentifyConnectionProperties(&discordgateway.IdentifyConnectionProperties{
+         OS:      runtime.GOOS,
          Browser: "github.com/andersfylling/discordgateway v0",
          Device:  "tester",
-      },
-   })
+      }),
+   )
    if err != nil {
       log.Fatal(err)
    }
@@ -96,7 +93,7 @@ reconnectStage:
 
       var discordErr *discordgateway.DiscordError
       if errors.As(err, &discordErr) {
-         reconnect = discordErr.Reconnect()
+         reconnect = discordErr.CanReconnect()
       }
 
       if reconnect {
@@ -173,10 +170,9 @@ import (
 )
 
 func main() {
-	shard, err := gatewayshard.NewShard(nil, &discordgateway.ShardConfig{
-		BotToken:   os.Getenv("DISCORD_TOKEN"),
-		Intents:    intent.Guilds,
-	})
+	shard, err := gatewayshard.NewShard(0, os.Getenv("DISCORD_TOKEN"), nil,
+		discordgateway.WithIntents(intent.Guilds),
+	)
 	if err != nil {
 		panic(err)
 	}
