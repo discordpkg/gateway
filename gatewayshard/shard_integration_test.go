@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andersfylling/discordgateway/opcode"
-
 	"github.com/andersfylling/discordgateway/event"
 )
 
@@ -65,13 +63,10 @@ func TestShard(t *testing.T) {
 		t.Fatal("failed to dial")
 	}
 
-	op, err := shard.EventLoop(ctx)
+	err = shard.EventLoop(ctx)
 	var closeErr *discordgateway.DiscordError
 	if errors.As(err, &closeErr) {
 	} else if err != nil && !(errors.Is(err, context.Canceled)) {
 		t.Errorf("expected error to be context cancellation / normal close. Got %s", err.Error())
-	}
-	if op != opcode.Invalid {
-		t.Errorf("expected op code to be invalid, got %d", op)
 	}
 }
