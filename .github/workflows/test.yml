@@ -6,7 +6,8 @@ on:
       - reopened
   push:
     branches:
-      - master
+      - main
+
 name: tests
 jobs:
   unit-tests:
@@ -15,7 +16,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        go: ['1.17']
+        go: ['1.18']
     steps:
       - name: Setup Go
         uses: actions/setup-go@v1
