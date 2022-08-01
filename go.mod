@@ -1,6 +1,6 @@
-module github.com/andersfylling/discordgateway
+module github.com/andersfylling/gateway
 
-go 1.16
+go 1.18
 
 require (
 	github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8

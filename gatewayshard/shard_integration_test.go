@@ -3,20 +3,20 @@ package gatewayshard
 import (
 	"context"
 	"errors"
-	"github.com/andersfylling/discordgateway"
+	"github.com/discordpkg/gateway"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/andersfylling/discordgateway/event"
+	"github.com/discordpkg/gateway/event"
 )
 
 func TestShardIntents(t *testing.T) {
 	shard, err := NewShard(0, "adas", nil,
-		discordgateway.WithGuildEvents(event.MessageCreate),
-		discordgateway.WithIdentifyConnectionProperties(&discordgateway.IdentifyConnectionProperties{
+		gateway.WithGuildEvents(event.MessageCreate),
+		gateway.WithIdentifyConnectionProperties(&gateway.IdentifyConnectionProperties{
 			OS:      "linux",
-			Browser: "github.com/andersfylling/discordgateway v0",
+			Browser: "github.com/discordpkg/gateway v0",
 			Device:  "tester",
 		}),
 	)
@@ -42,16 +42,16 @@ func TestShard(t *testing.T) {
 	}
 
 	recordedEvents := make(map[event.Type]struct{})
-	var recordEvent discordgateway.Handler = func(id discordgateway.ShardID, e event.Type, message discordgateway.RawMessage) {
+	var recordEvent gateway.Handler = func(id gateway.ShardID, e event.Type, message gateway.RawMessage) {
 		recordedEvents[e] = struct{}{}
 	}
 
 	shard, err := NewShard(0, token, recordEvent,
-		discordgateway.WithGuildEvents(event.All()...),
-		discordgateway.WithDirectMessageEvents(event.All()...),
-		discordgateway.WithIdentifyConnectionProperties(&discordgateway.IdentifyConnectionProperties{
+		gateway.WithGuildEvents(event.All()...),
+		gateway.WithDirectMessageEvents(event.All()...),
+		gateway.WithIdentifyConnectionProperties(&gateway.IdentifyConnectionProperties{
 			OS:      "linux",
-			Browser: "github.com/andersfylling/discordgateway v0",
+			Browser: "github.com/discordpkg/gateway v0",
 			Device:  "tester",
 		}),
 	)
@@ -64,7 +64,7 @@ func TestShard(t *testing.T) {
 	}
 
 	err = shard.EventLoop(ctx)
-	var closeErr *discordgateway.DiscordError
+	var closeErr *gateway.DiscordError
 	if errors.As(err, &closeErr) {
 	} else if err != nil && !(errors.Is(err, context.Canceled)) {
 		t.Errorf("expected error to be context cancellation / normal close. Got %s", err.Error())

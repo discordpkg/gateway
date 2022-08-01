@@ -1,25 +1,25 @@
-package discordgateway
+package gateway
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/andersfylling/discordgateway/command"
-	"github.com/andersfylling/discordgateway/internal/util"
+	"github.com/discordpkg/gateway/command"
+	"github.com/discordpkg/gateway/internal/util"
 	"net"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/andersfylling/discordgateway/closecode"
-	"github.com/andersfylling/discordgateway/intent"
 	"github.com/bradfitz/iter"
+	"github.com/discordpkg/gateway/closecode"
+	"github.com/discordpkg/gateway/intent"
 
-	"github.com/andersfylling/discordgateway/event"
-	"github.com/andersfylling/discordgateway/json"
+	"github.com/discordpkg/gateway/event"
+	"github.com/discordpkg/gateway/json"
 
-	"github.com/andersfylling/discordgateway/opcode"
+	"github.com/discordpkg/gateway/opcode"
 )
 
 var defaultOptions = []Option{

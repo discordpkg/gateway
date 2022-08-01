@@ -2,10 +2,10 @@
   <a href="https://codecov.io/gh/andersfylling/discordgateway">
     <img src="https://codecov.io/gh/andersfylling/discordgateway/branch/master/graph/badge.svg" />
   </a>
-  <a href='https://goreportcard.com/report/github.com/andersfylling/discordgateway'>
-    <img src='https://goreportcard.com/badge/github.com/andersfylling/discordgateway' alt='Code coverage' />
+  <a href='https://goreportcard.com/report/github.com/discordpkg/gateway'>
+    <img src='https://goreportcard.com/badge/github.com/discordpkg/gateway' alt='Code coverage' />
   </a>
-  <a href='https://pkg.go.dev/github.com/andersfylling/discordgateway'>
+  <a href='https://pkg.go.dev/github.com/discordpkg/gateway'>
     <img src="https://pkg.go.dev/badge/andersfylling/discordgateway" alt="PkgGoDev">
   </a>
 </p>
@@ -49,11 +49,11 @@ import (
    "context"
    "errors"
    "fmt"
-   "github.com/andersfylling/discordgateway"
-   "github.com/andersfylling/discordgateway/event"
-   "github.com/andersfylling/discordgateway/intent"
-   "github.com/andersfylling/discordgateway/log"
-   "github.com/andersfylling/discordgateway/gatewayshard"
+   "github.com/discordpkg/gateway"
+   "github.com/discordpkg/gateway/event"
+   "github.com/discordpkg/gateway/intent"
+   "github.com/discordpkg/gateway/log"
+   "github.com/discordpkg/gateway/gatewayshard"
    "net"
    "os"
 )
@@ -64,7 +64,7 @@ func main() {
       discordgateway.WithDirectMessageEvents(intent.Events(intent.DirectMessageReactions)),
       discordgateway.WithIdentifyConnectionProperties(&discordgateway.IdentifyConnectionProperties{
          OS:      runtime.GOOS,
-         Browser: "github.com/andersfylling/discordgateway v0",
+         Browser: "github.com/discordpkg/gateway v0",
          Device:  "tester",
       }),
    )
@@ -158,11 +158,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/andersfylling/discordgateway"
-	"github.com/andersfylling/discordgateway/event"
-	"github.com/andersfylling/discordgateway/opcode"
-	"github.com/andersfylling/discordgateway/command"
-	"github.com/andersfylling/discordgateway/gatewayshard"
+	"github.com/discordpkg/gateway"
+	"github.com/discordpkg/gateway/event"
+	"github.com/discordpkg/gateway/opcode"
+	"github.com/discordpkg/gateway/command"
+	"github.com/discordpkg/gateway/gatewayshard"
 	"os"
 )
 

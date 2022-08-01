@@ -1,4 +1,4 @@
-module github.com/andersfylling/discordgateway/_dev
+module github.com/discordpkg/gateway/_dev
 
 go 1.17
 

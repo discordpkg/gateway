@@ -1,6 +1,6 @@
 package util
 
-import "github.com/andersfylling/discordgateway/event"
+import "github.com/discordpkg/gateway/event"
 
 type EventSet interface {
 	Add(events ...event.Type)

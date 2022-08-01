@@ -1,22 +1,22 @@
-package discordgateway
+package gateway
 
 import (
 	"errors"
 	"fmt"
-	"github.com/andersfylling/discordgateway/closecode"
-	"github.com/andersfylling/discordgateway/command"
-	"github.com/andersfylling/discordgateway/event"
-	"github.com/andersfylling/discordgateway/internal/util"
-	"github.com/andersfylling/discordgateway/json"
-	"github.com/andersfylling/discordgateway/log"
+	"github.com/discordpkg/gateway/closecode"
+	"github.com/discordpkg/gateway/command"
+	"github.com/discordpkg/gateway/event"
+	"github.com/discordpkg/gateway/internal/util"
+	"github.com/discordpkg/gateway/json"
+	"github.com/discordpkg/gateway/log"
 	"go.uber.org/atomic"
 	"io"
 	"net"
 	"runtime"
 	"strconv"
 
-	"github.com/andersfylling/discordgateway/intent"
-	"github.com/andersfylling/discordgateway/opcode"
+	"github.com/discordpkg/gateway/intent"
+	"github.com/discordpkg/gateway/opcode"
 )
 
 type DiscordError struct {
@@ -75,8 +75,8 @@ func NewGatewayState(botToken string, options ...Option) (*GatewayState, error) 
 	if gs.connectionProperties == nil {
 		gs.connectionProperties = &IdentifyConnectionProperties{
 			OS:      runtime.GOOS,
-			Browser: "github.com/andersfylling/discordgateway",
-			Device:  "github.com/andersfylling/discordgateway",
+			Browser: "github.com/discordpkg/gateway",
+			Device:  "github.com/discordpkg/gateway",
 		}
 	}
 

@@ -1,4 +1,4 @@
-package discordgateway
+package gateway
 
 import (
 	"testing"

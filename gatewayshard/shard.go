@@ -4,24 +4,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/andersfylling/discordgateway"
-	"github.com/andersfylling/discordgateway/command"
+	"github.com/discordpkg/gateway"
+	"github.com/discordpkg/gateway/command"
 	"io"
 	"net"
 	"strings"
 	"time"
 
-	"github.com/andersfylling/discordgateway/closecode"
-	"github.com/andersfylling/discordgateway/intent"
+	"github.com/discordpkg/gateway/closecode"
+	"github.com/discordpkg/gateway/intent"
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"go.uber.org/atomic"
 
-	"github.com/andersfylling/discordgateway/event"
-	"github.com/andersfylling/discordgateway/json"
-	"github.com/andersfylling/discordgateway/log"
-	"github.com/andersfylling/discordgateway/opcode"
+	"github.com/discordpkg/gateway/event"
+	"github.com/discordpkg/gateway/json"
+	"github.com/discordpkg/gateway/log"
+	"github.com/discordpkg/gateway/opcode"
 )
 
 type WebsocketError struct {
@@ -51,28 +51,28 @@ type ShardConfig struct {
 	ShardID             uint
 	TotalNumberOfShards uint
 
-	IdentifyProperties discordgateway.IdentifyConnectionProperties
+	IdentifyProperties gateway.IdentifyConnectionProperties
 
 	GuildEvents []event.Type
 	DMEvents    []event.Type
 
 	CommandRateLimitChan <-chan int
-	IdentifyRateLimiter  discordgateway.IdentifyRateLimiter
+	IdentifyRateLimiter  gateway.IdentifyRateLimiter
 
 	// Intents does not have to be specified as these are derived from GuildEvents
 	// and DMEvents. However, you can specify intents and it will be merged with the derived intents.
 	Intents intent.Type
 }
 
-func NewShard(shardID discordgateway.ShardID, botToken string, handler discordgateway.Handler, options ...discordgateway.Option) (*Shard, error) {
-	state, err := discordgateway.NewGatewayState(botToken, options...)
+func NewShard(shardID gateway.ShardID, botToken string, handler gateway.Handler, options ...gateway.Option) (*Shard, error) {
+	state, err := gateway.NewGatewayState(botToken, options...)
 	if err != nil {
 		return nil, err
 	}
 
 	shard := &Shard{
 		shardID:  shardID,
-		options:  append(options, discordgateway.WithShardID(shardID)),
+		options:  append(options, gateway.WithShardID(shardID)),
 		botToken: botToken,
 		State:    state,
 		handler:  handler,
@@ -95,15 +95,15 @@ func (i *ioWriteFlusher) Write(p []byte) (n int, err error) {
 }
 
 type Shard struct {
-	options  []discordgateway.Option
+	options  []gateway.Option
 	botToken string
 
 	Conn        net.Conn
-	State       *discordgateway.GatewayState
-	handler     discordgateway.Handler
+	State       *gateway.GatewayState
+	handler     gateway.Handler
 	textWriter  io.Writer
 	closeWriter io.Writer
-	shardID     discordgateway.ShardID
+	shardID     gateway.ShardID
 }
 
 // Dial sets up the websocket connection before identifying with the gateway.
@@ -112,7 +112,7 @@ type Shard struct {
 //  "wss://gateway.discord.gg/?v=9"                 => invalid
 //  "wss://gateway.discord.gg/?v=9&encoding=json"   => valid
 func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn, err error) {
-	URLString, err = discordgateway.ValidateDialURL(URLString)
+	URLString, err = gateway.ValidateDialURL(URLString)
 	if err != nil {
 		return nil, err
 	}
@@ -192,12 +192,12 @@ func (s *Shard) PrepareForReconnect() error {
 	options := s.options
 	if s.State.HaveSessionID() {
 		// setup a resume attempt
-		options = append(options, discordgateway.WithSequenceNumber(s.State.SequenceNumber()))
-		options = append(options, discordgateway.WithSessionID(s.State.SessionID()))
+		options = append(options, gateway.WithSequenceNumber(s.State.SequenceNumber()))
+		options = append(options, gateway.WithSessionID(s.State.SessionID()))
 	}
 
 	var err error
-	s.State, err = discordgateway.NewGatewayState(s.botToken, options...)
+	s.State, err = gateway.NewGatewayState(s.botToken, options...)
 	return err
 }
 
@@ -275,11 +275,11 @@ func (s *Shard) eventLoop(ctx context.Context) error {
 				s.handler(s.shardID, payload.EventName, payload.Data)
 			}
 		case opcode.InvalidSession, opcode.Reconnect:
-			return &discordgateway.DiscordError{
+			return &gateway.DiscordError{
 				OpCode: payload.Op,
 			}
 		case opcode.Hello:
-			var hello *discordgateway.Hello
+			var hello *gateway.Hello
 			if err := json.Unmarshal(payload.Data, &hello); err != nil {
 				return fmt.Errorf("failed to extract heartbeat from hello message. %w", err)
 			}
@@ -301,7 +301,7 @@ func (s *Shard) eventLoop(ctx context.Context) error {
 type heart struct {
 	interval          time.Duration
 	conn              net.Conn
-	shard             *discordgateway.GatewayState
+	shard             *gateway.GatewayState
 	forcedReadTimeout *atomic.Bool
 	gotAck            atomic.Bool
 }

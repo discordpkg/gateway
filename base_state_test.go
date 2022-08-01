@@ -1,20 +1,20 @@
-package discordgateway
+package gateway
 
 import (
 	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/andersfylling/discordgateway/command"
+	"github.com/andersfylling/gateway/command"
 	"io"
 	"net"
 	"testing"
 	"time"
 
-	"github.com/andersfylling/discordgateway/event"
-	"github.com/andersfylling/discordgateway/json"
+	"github.com/andersfylling/gateway/event"
+	"github.com/andersfylling/gateway/json"
 
-	"github.com/andersfylling/discordgateway/opcode"
+	"github.com/andersfylling/gateway/opcode"
 )
 
 type IOMock struct {

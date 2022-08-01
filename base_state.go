@@ -1,21 +1,21 @@
-package discordgateway
+package gateway
 
 import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/andersfylling/discordgateway/command"
+	"github.com/discordpkg/gateway/command"
 	"io"
 	"io/ioutil"
 	"net"
 	"strings"
 
-	"github.com/andersfylling/discordgateway/json"
+	"github.com/discordpkg/gateway/json"
 
 	"go.uber.org/atomic"
 
-	"github.com/andersfylling/discordgateway/event"
-	"github.com/andersfylling/discordgateway/opcode"
+	"github.com/discordpkg/gateway/event"
+	"github.com/discordpkg/gateway/opcode"
 )
 
 const (

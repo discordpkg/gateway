@@ -5,7 +5,7 @@ Here the standard json implementation is swapped out with jsoniter:
 package main
 
 import (
-    "github.com/andersfylling/discordgateway/json"
+    "github.com/discordpkg/gateway/json"
     jsoniter "github.com/json-iterator/go"
 )
 

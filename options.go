@@ -1,10 +1,10 @@
-package discordgateway
+package gateway
 
 import (
 	"errors"
-	"github.com/andersfylling/discordgateway/event"
-	"github.com/andersfylling/discordgateway/intent"
-	"github.com/andersfylling/discordgateway/internal/util"
+	"github.com/discordpkg/gateway/event"
+	"github.com/discordpkg/gateway/intent"
+	"github.com/discordpkg/gateway/internal/util"
 )
 
 // Option for initializing a new gateway state. An option must be deterministic regardless

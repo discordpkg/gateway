@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/andersfylling/discordgateway/gatewayshard"
+	"github.com/discordpkg/gateway/gatewayshard"
 	"os"
 	"runtime"
 	"time"
@@ -12,9 +12,9 @@ import (
 	"github.com/andersfylling/disgord"
 	"github.com/sirupsen/logrus"
 
-	"github.com/andersfylling/discordgateway"
-	"github.com/andersfylling/discordgateway/event"
-	"github.com/andersfylling/discordgateway/log"
+	"github.com/discordpkg/gateway"
+	"github.com/discordpkg/gateway/event"
+	"github.com/discordpkg/gateway/log"
 )
 
 const EnvDiscordToken = "DISCORD_TOKEN"
@@ -89,10 +89,10 @@ func listen(logger *logrus.Logger, token string) {
 	logger.Warn("STARTED")
 
 	shard, err := gatewayshard.NewShard(0, token, nil,
-		discordgateway.WithGuildEvents(event.All()...),
-		discordgateway.WithIdentifyConnectionProperties(&discordgateway.IdentifyConnectionProperties{
+		gateway.WithGuildEvents(event.All()...),
+		gateway.WithIdentifyConnectionProperties(&gateway.IdentifyConnectionProperties{
 			OS:      runtime.GOOS,
-			Browser: "github.com/andersfylling/discordgateway v0",
+			Browser: "github.com/discordpkg/gateway v0",
 			Device:  "tester",
 		}),
 	)
@@ -109,7 +109,7 @@ reconnect:
 	if err = shard.EventLoop(context.Background()); err != nil {
 		reconnect := true
 
-		var discordErr *discordgateway.DiscordError
+		var discordErr *gateway.DiscordError
 		if errors.As(err, &discordErr) {
 			reconnect = discordErr.CanReconnect()
 		}

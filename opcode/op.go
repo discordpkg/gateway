@@ -1,6 +1,6 @@
 package opcode
 
-import "github.com/andersfylling/discordgateway/command"
+import "github.com/discordpkg/gateway/command"
 
 // Type is the discord operation value
 type Type uint

@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/andersfylling/discordgateway/_dev/generate"
-	"github.com/andersfylling/discordgateway/_dev/generate/commands"
-	"github.com/andersfylling/discordgateway/_dev/generate/events"
-	"github.com/andersfylling/discordgateway/_dev/generate/intents"
+	"github.com/discordpkg/gateway/_dev/generate"
+	"github.com/discordpkg/gateway/_dev/generate/commands"
+	"github.com/discordpkg/gateway/_dev/generate/events"
+	"github.com/discordpkg/gateway/_dev/generate/intents"
 	"io/ioutil"
 	"strings"
 )

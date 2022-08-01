@@ -3,7 +3,7 @@ package intent
 import (
 	"testing"
 
-	"github.com/andersfylling/discordgateway/event"
+	"github.com/discordpkg/gateway/event"
 )
 
 func TestAllAndSum(t *testing.T) {

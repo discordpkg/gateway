@@ -1,10 +1,10 @@
-package discordgateway
+package gateway
 
 import (
-	"github.com/andersfylling/discordgateway/intent"
-	"github.com/andersfylling/discordgateway/json"
+	"github.com/discordpkg/gateway/intent"
+	"github.com/discordpkg/gateway/json"
 
-	"github.com/andersfylling/discordgateway/event"
+	"github.com/discordpkg/gateway/event"
 )
 
 type RawMessage = json.RawMessage
