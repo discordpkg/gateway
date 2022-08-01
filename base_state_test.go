@@ -5,16 +5,16 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/andersfylling/gateway/command"
+	"github.com/discordpkg/gateway/command"
 	"io"
 	"net"
 	"testing"
 	"time"
 
-	"github.com/andersfylling/gateway/event"
-	"github.com/andersfylling/gateway/json"
+	"github.com/discordpkg/gateway/event"
+	"github.com/discordpkg/gateway/json"
 
-	"github.com/andersfylling/gateway/opcode"
+	"github.com/discordpkg/gateway/opcode"
 )
 
 type IOMock struct {
