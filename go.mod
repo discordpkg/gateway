@@ -1,4 +1,4 @@
-module github.com/andersfylling/gateway
+module github.com/discordpkg/gateway
 
 go 1.18
 
