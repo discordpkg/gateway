@@ -48,15 +48,15 @@ func TestValidateDialURL(t *testing.T) {
 	}
 
 	tests := []table{
-		{"wrong schema", "http://gateway.discord.gg/?v=9&encoding=json", ErrURLScheme},
-		{"wrong schema", "https://gateway.discord.gg/?v=9&encoding=json", ErrURLScheme},
+		{"wrong schema", "http://gateway.discord.gg/?v=10&encoding=json", ErrURLScheme},
+		{"wrong schema", "https://gateway.discord.gg/?v=10&encoding=json", ErrURLScheme},
 		{"incomplete url", "wss://gateway.discord.gg/", ErrIncompleteDialURL},
 		{"incomplete url", "wss://gateway.discord.gg/", ErrIncompleteDialURL},
 		{"incomplete url", "wss://gateway.discord.gg/?v=1", ErrIncompleteDialURL},
 		{"incomplete url", "wss://gateway.discord.gg/?encoding=json", ErrIncompleteDialURL},
 		{"old api version", "wss://gateway.discord.gg/?v=1&encoding=json", ErrUnsupportedAPIVersion},
-		{"wrong encoding", "wss://gateway.discord.gg/?v=9&encoding=mysql", ErrUnsupportedAPICodec},
-		{"valid url", "wss://gateway.discord.gg/?v=9&encoding=json", nil},
+		{"wrong encoding", "wss://gateway.discord.gg/?v=10&encoding=mysql", ErrUnsupportedAPICodec},
+		{"valid url", "wss://gateway.discord.gg/?v=10&encoding=json", nil},
 	}
 
 	for _, test := range tests {

@@ -13,7 +13,7 @@ func DeriveShardID(snowflake uint64, totalNumberOfShards uint) ShardID {
 }
 
 var supportedAPIVersions = []string{
-	"8", "9",
+	"8", "9", "10",
 }
 var supportedAPICodes = []string{
 	"json",

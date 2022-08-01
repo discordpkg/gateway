@@ -109,8 +109,8 @@ type Shard struct {
 // Dial sets up the websocket connection before identifying with the gateway.
 // The url must be complete and specify api version and encoding:
 //  "wss://gateway.discord.gg/"                     => invalid
-//  "wss://gateway.discord.gg/?v=9"                 => invalid
-//  "wss://gateway.discord.gg/?v=9&encoding=json"   => valid
+//  "wss://gateway.discord.gg/?v=10"                 => invalid
+//  "wss://gateway.discord.gg/?v=10&encoding=json"   => valid
 func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn, err error) {
 	URLString, err = gateway.ValidateDialURL(URLString)
 	if err != nil {
