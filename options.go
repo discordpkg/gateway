@@ -99,7 +99,7 @@ func WithSequenceNumber(seq int64) Option {
 			return errors.New("initial sequence number can not be a negative number")
 		}
 
-		st.initialSequenceNumber = seq
+		st.sequenceNumber.Store(seq)
 		return nil
 	}
 }

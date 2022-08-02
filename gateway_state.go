@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/discordpkg/gateway/closecode"
@@ -10,13 +11,30 @@ import (
 	"github.com/discordpkg/gateway/json"
 	"go.uber.org/atomic"
 	"io"
+	"io/ioutil"
 	"net"
 	"runtime"
 	"strconv"
+	"strings"
 
 	"github.com/discordpkg/gateway/intent"
 	"github.com/discordpkg/gateway/opcode"
 )
+
+const (
+	NormalCloseCode  uint16 = 1000
+	RestartCloseCode uint16 = 1012
+)
+
+type GatewayPayload struct {
+	Op        opcode.Type     `json:"op"`
+	Data      json.RawMessage `json:"d"`
+	Seq       int64           `json:"s,omitempty"`
+	EventName event.Type      `json:"t,omitempty"`
+	Outdated  bool            `json:"-"`
+}
+
+var ErrSequenceNumberSkipped = errors.New("the sequence number increased with more than 1, events lost")
 
 type DiscordError struct {
 	CloseCode closecode.Type
@@ -91,17 +109,14 @@ func NewGatewayState(botToken string, options ...Option) (*GatewayState, error) 
 		return nil, errors.New("shard id is higher than shard count")
 	}
 
-	gs.state = newStateWithSeqNumber(gs.initialSequenceNumber)
 	return gs, nil
 }
 
 // GatewayState should be discarded after the connection has closed.
 // reconnect must create a new shard instance.
 type GatewayState struct {
-	state
-	// TODO: replace state interface with stateClient struct
-	//  interface is used to ensure validity, and avoid write dependencies.
-	//  The idea is that state can be re-used in a future voice implementation as well
+	sequenceNumber atomic.Int64
+	closed         atomic.Bool
 
 	// events that are not found in the whitelist are viewed as redundant and are
 	// skipped / ignored
@@ -111,10 +126,9 @@ type GatewayState struct {
 
 	intents intent.Type
 
-	initialSequenceNumber int64
-	sessionID             string
-	sentResumeOrIdentify  atomic.Bool
-	closers               []io.Closer
+	sessionID            string
+	sentResumeOrIdentify atomic.Bool
+	closers              []io.Closer
 
 	shardID              ShardID
 	totalNumberOfShards  uint
@@ -133,6 +147,43 @@ func (gs *GatewayState) String() string {
 	return data
 }
 
+func (gs *GatewayState) SequenceNumber() int64 {
+	return gs.sequenceNumber.Load()
+}
+
+func (gs *GatewayState) Closed() bool {
+	return gs.closed.Load()
+}
+
+func (gs *GatewayState) WriteNormalClose(client io.Writer) error {
+	return gs.writeClose(client, NormalCloseCode)
+}
+
+func (gs *GatewayState) WriteRestartClose(client io.Writer) error {
+	return gs.writeClose(client, RestartCloseCode)
+}
+
+func (gs *GatewayState) writeClose(client io.Writer, code uint16) error {
+	writeIfOpen := func() error {
+		if gs.closed.CAS(false, true) {
+			closeCodeBuf := make([]byte, 2)
+			binary.BigEndian.PutUint16(closeCodeBuf, code)
+
+			_, err := client.Write(closeCodeBuf)
+			return err
+		}
+		return net.ErrClosed
+	}
+
+	if err := writeIfOpen(); err != nil {
+		if !errors.Is(err, net.ErrClosed) && strings.Contains(err.Error(), "use of closed connection") {
+			return net.ErrClosed
+		}
+		return err
+	}
+	return nil
+}
+
 func (gs *GatewayState) Close() error {
 	for _, closer := range gs.closers {
 		_ = closer.Close()
@@ -141,6 +192,10 @@ func (gs *GatewayState) Close() error {
 }
 
 func (gs *GatewayState) Write(client io.Writer, opc command.Type, payload json.RawMessage) (err error) {
+	if gs.closed.Load() {
+		return net.ErrClosed
+	}
+
 	if opc != command.Heartbeat {
 		// heartbeat should always be sent, regardless!
 		<-gs.commandRateLimitChan
@@ -151,24 +206,64 @@ func (gs *GatewayState) Write(client io.Writer, opc command.Type, payload json.R
 		}
 	}
 
-	return gs.state.Write(client, opc, payload)
+	defer func() {
+		if err != nil {
+			// TODO: skip error wrapping if the connection was closed before hand
+			//  no need to close twice and pretend this was the first place to
+			//  do so..
+			// _ = client.Close()
+			err = fmt.Errorf("client after failed dispatch. %w", err)
+		}
+	}()
+
+	packet := GatewayPayload{
+		Op:   opcode.Type(opc),
+		Data: payload,
+	}
+
+	var data []byte
+	data, err = json.Marshal(&packet)
+	if err != nil {
+		return fmt.Errorf("unable to marshal packet; %w", err)
+	}
+
+	_, err = client.Write(data)
+	return err
 }
 
 func (gs *GatewayState) Read(client io.Reader) (*GatewayPayload, int, error) {
-	payload, length, err := gs.state.Read(client)
-	if err != nil {
-		return nil, 0, err
+	if gs.closed.Load() {
+		return nil, 0, net.ErrClosed
 	}
 
-	if payload.EventName == event.Ready {
+	data, err := ioutil.ReadAll(client)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to read data. %w", err)
+	}
+
+	packet := &GatewayPayload{}
+	if err = json.Unmarshal(data, packet); err != nil {
+		return nil, 0, fmt.Errorf("failed to unmarshal packet. %w", err)
+	}
+
+	prevSeq := gs.sequenceNumber.Load()
+	packet.Outdated = prevSeq >= packet.Seq
+	if packet.Seq-prevSeq > 1 {
+		return nil, 0, ErrSequenceNumberSkipped
+	}
+	if !packet.Outdated {
+		gs.sequenceNumber.Store(packet.Seq)
+	}
+
+	if packet.EventName == event.Ready {
 		// need to store session ID for resume
 		ready := Ready{}
-		if err := json.Unmarshal(payload.Data, &ready); err != nil || ready.SessionID == "" {
-			return payload, length, fmt.Errorf("failed to extract session id from ready event. %w", err)
+		if err := json.Unmarshal(packet.Data, &ready); err != nil || ready.SessionID == "" {
+			return packet, len(data), fmt.Errorf("failed to extract session id from ready event. %w", err)
 		}
 		gs.sessionID = ready.SessionID
 	}
-	return payload, length, nil
+	return packet, len(data), nil
 }
 
 func (gs *GatewayState) ProcessNextMessage(pipe io.Reader, textWriter, closeWriter io.Writer) (payload *GatewayPayload, redundant bool, err error) {
