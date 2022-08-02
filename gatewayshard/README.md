@@ -1,3 +1,3 @@
 # Shard
 
-Basic shard implementation utilizing the discordgateway package.
+Basic shard implementation utilizing the gateway package.

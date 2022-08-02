@@ -12,9 +12,9 @@ import (
 type Option func(st *GatewayState) error
 
 func WithDirectMessageEvents(events ...event.Type) Option {
-	set := util.NewEventSet()
+	set := util.Set[event.Type]{}
 	set.Add(events...)
-	deduplicated := util.ToEventSlice(set)
+	deduplicated := set.ToSlice()
 
 	return func(st *GatewayState) error {
 		if len(deduplicated) != len(events) {
@@ -30,9 +30,9 @@ func WithDirectMessageEvents(events ...event.Type) Option {
 }
 
 func WithGuildEvents(events ...event.Type) Option {
-	set := util.NewEventSet()
+	set := util.Set[event.Type]{}
 	set.Add(events...)
-	deduplicated := util.ToEventSlice(set)
+	deduplicated := set.ToSlice()
 
 	return func(st *GatewayState) error {
 		if len(deduplicated) != len(events) {

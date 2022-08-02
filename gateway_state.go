@@ -50,7 +50,7 @@ func NewGatewayState(botToken string, options ...Option) (*GatewayState, error) 
 		gs.intents |= intent.DMEventsToIntents(gs.directMessageEvents)
 
 		// whitelisted events specified events only
-		gs.whitelist = util.NewEventSet()
+		gs.whitelist = util.Set[event.Type]{}
 		gs.whitelist.Add(gs.guildEvents...)
 		gs.whitelist.Add(gs.directMessageEvents...)
 
@@ -106,7 +106,7 @@ type GatewayState struct {
 
 	// events that are not found in the whitelist are viewed as redundant and are
 	// skipped / ignored
-	whitelist           util.EventSet
+	whitelist           util.Set[event.Type]
 	directMessageEvents []event.Type
 	guildEvents         []event.Type
 
