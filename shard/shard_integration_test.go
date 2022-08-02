@@ -1,4 +1,4 @@
-package gatewayshard
+package shard
 
 import (
 	"context"
