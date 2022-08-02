@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/discordpkg/gateway"
 	"github.com/discordpkg/gateway/command"
+	"github.com/discordpkg/gateway/shard/log"
 	"io"
 	"net"
 	"strings"
@@ -20,7 +21,6 @@ import (
 
 	"github.com/discordpkg/gateway/event"
 	"github.com/discordpkg/gateway/json"
-	"github.com/discordpkg/gateway/log"
 	"github.com/discordpkg/gateway/opcode"
 )
 

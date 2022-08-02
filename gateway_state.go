@@ -8,7 +8,6 @@ import (
 	"github.com/discordpkg/gateway/event"
 	"github.com/discordpkg/gateway/internal/util"
 	"github.com/discordpkg/gateway/json"
-	"github.com/discordpkg/gateway/log"
 	"go.uber.org/atomic"
 	"io"
 	"net"
@@ -214,7 +213,8 @@ func (gs *GatewayState) ProcessPayload(payload *GatewayPayload, textWriter, clos
 	case opcode.Reconnect:
 		_ = gs.WriteRestartClose(closeWriter)
 	default:
-		log.Warn("unhandled operation code: %d", payload.Op)
+		// unhandled operation code
+		// TODO: logging?
 	}
 
 	return false, nil
