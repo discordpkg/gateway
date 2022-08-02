@@ -50,47 +50,47 @@ func (c DiscordError) CanReconnect() bool {
 	return closecode.CanReconnectAfter(c.CloseCode) || opcode.CanReconnectAfter(c.OpCode)
 }
 
-func NewGatewayState(botToken string, options ...Option) (*GatewayState, error) {
-	gs := &GatewayState{
+func NewState(botToken string, options ...Option) (*State, error) {
+	st := &State{
 		botToken: botToken,
 	}
 
 	for i := range options {
-		if err := options[i](gs); err != nil {
+		if err := options[i](st); err != nil {
 			return nil, err
 		}
 	}
 
-	if gs.intents == 0 && (len(gs.guildEvents) > 0 || len(gs.directMessageEvents) > 0) {
+	if st.intents == 0 && (len(st.guildEvents) > 0 || len(st.directMessageEvents) > 0) {
 		// derive intents
-		gs.intents |= intent.GuildEventsToIntents(gs.guildEvents)
-		gs.intents |= intent.DMEventsToIntents(gs.directMessageEvents)
+		st.intents |= intent.GuildEventsToIntents(st.guildEvents)
+		st.intents |= intent.DMEventsToIntents(st.directMessageEvents)
 
 		// whitelisted events specified events only
-		gs.whitelist = util.Set[event.Type]{}
-		gs.whitelist.Add(gs.guildEvents...)
-		gs.whitelist.Add(gs.directMessageEvents...)
+		st.whitelist = util.Set[event.Type]{}
+		st.whitelist.Add(st.guildEvents...)
+		st.whitelist.Add(st.directMessageEvents...)
 
 		// crucial for normal function
-		gs.whitelist.Add(event.Ready, event.Resumed)
+		st.whitelist.Add(event.Ready, event.Resumed)
 	}
 
 	// rate limits
-	if gs.commandRateLimitChan == nil {
+	if st.commandRateLimitChan == nil {
 		var closer io.Closer
-		gs.commandRateLimitChan, closer = NewCommandRateLimiter()
-		gs.closers = append(gs.closers, closer)
+		st.commandRateLimitChan, closer = NewCommandRateLimiter()
+		st.closers = append(st.closers, closer)
 	}
-	if gs.identifyRateLimiter == nil {
+	if st.identifyRateLimiter == nil {
 		channel, closer := NewIdentifyRateLimiter()
-		gs.closers = append(gs.closers, closer)
+		st.closers = append(st.closers, closer)
 
-		gs.identifyRateLimiter = &channelTaker{c: channel}
+		st.identifyRateLimiter = &channelTaker{c: channel}
 	}
 
 	// connection properties
-	if gs.connectionProperties == nil {
-		gs.connectionProperties = &IdentifyConnectionProperties{
+	if st.connectionProperties == nil {
+		st.connectionProperties = &IdentifyConnectionProperties{
 			OS:      runtime.GOOS,
 			Browser: "github.com/discordpkg/gateway",
 			Device:  "github.com/discordpkg/gateway",
@@ -98,23 +98,23 @@ func NewGatewayState(botToken string, options ...Option) (*GatewayState, error) 
 	}
 
 	// sharding
-	if gs.totalNumberOfShards == 0 {
-		if gs.shardID == 0 {
-			gs.totalNumberOfShards = 1
+	if st.totalNumberOfShards == 0 {
+		if st.shardID == 0 {
+			st.totalNumberOfShards = 1
 		} else {
 			return nil, errors.New("missing shard count")
 		}
 	}
-	if uint(gs.shardID) > gs.totalNumberOfShards {
+	if uint(st.shardID) > st.totalNumberOfShards {
 		return nil, errors.New("shard id is higher than shard count")
 	}
 
-	return gs, nil
+	return st, nil
 }
 
-// GatewayState should be discarded after the connection has closed.
+// State should be discarded after the connection has closed.
 // reconnect must create a new shard instance.
-type GatewayState struct {
+type State struct {
 	sequenceNumber atomic.Int64
 	closed         atomic.Bool
 
@@ -138,34 +138,34 @@ type GatewayState struct {
 	botToken             string
 }
 
-func (gs *GatewayState) String() string {
+func (st *State) String() string {
 	data := ""
-	data += fmt.Sprintln("device:", gs.connectionProperties.Device)
-	data += fmt.Sprintln(fmt.Sprintf("shard: %d / %d", gs.shardID, gs.totalNumberOfShards))
-	data += fmt.Sprintln("intents:", gs.intents)
-	data += fmt.Sprintln("events:", gs.intents)
+	data += fmt.Sprintln("device:", st.connectionProperties.Device)
+	data += fmt.Sprintln(fmt.Sprintf("shard: %d / %d", st.shardID, st.totalNumberOfShards))
+	data += fmt.Sprintln("intents:", st.intents)
+	data += fmt.Sprintln("events:", st.intents)
 	return data
 }
 
-func (gs *GatewayState) SequenceNumber() int64 {
-	return gs.sequenceNumber.Load()
+func (st *State) SequenceNumber() int64 {
+	return st.sequenceNumber.Load()
 }
 
-func (gs *GatewayState) Closed() bool {
-	return gs.closed.Load()
+func (st *State) Closed() bool {
+	return st.closed.Load()
 }
 
-func (gs *GatewayState) WriteNormalClose(client io.Writer) error {
-	return gs.writeClose(client, NormalCloseCode)
+func (st *State) WriteNormalClose(client io.Writer) error {
+	return st.writeClose(client, NormalCloseCode)
 }
 
-func (gs *GatewayState) WriteRestartClose(client io.Writer) error {
-	return gs.writeClose(client, RestartCloseCode)
+func (st *State) WriteRestartClose(client io.Writer) error {
+	return st.writeClose(client, RestartCloseCode)
 }
 
-func (gs *GatewayState) writeClose(client io.Writer, code uint16) error {
+func (st *State) writeClose(client io.Writer, code uint16) error {
 	writeIfOpen := func() error {
-		if gs.closed.CAS(false, true) {
+		if st.closed.CAS(false, true) {
 			closeCodeBuf := make([]byte, 2)
 			binary.BigEndian.PutUint16(closeCodeBuf, code)
 
@@ -184,24 +184,24 @@ func (gs *GatewayState) writeClose(client io.Writer, code uint16) error {
 	return nil
 }
 
-func (gs *GatewayState) Close() error {
-	for _, closer := range gs.closers {
+func (st *State) Close() error {
+	for _, closer := range st.closers {
 		_ = closer.Close()
 	}
 	return nil
 }
 
-func (gs *GatewayState) Write(client io.Writer, opc command.Type, payload json.RawMessage) (err error) {
-	if gs.closed.Load() {
+func (st *State) Write(client io.Writer, opc command.Type, payload json.RawMessage) (err error) {
+	if st.closed.Load() {
 		return net.ErrClosed
 	}
 
 	if opc != command.Heartbeat {
 		// heartbeat should always be sent, regardless!
-		<-gs.commandRateLimitChan
+		<-st.commandRateLimitChan
 	}
 	if opc == command.Identify {
-		if available := gs.identifyRateLimiter.Take(gs.shardID); !available {
+		if available := st.identifyRateLimiter.Take(st.shardID); !available {
 			return errors.New("identify rate limiter denied shard to identify")
 		}
 	}
@@ -231,8 +231,8 @@ func (gs *GatewayState) Write(client io.Writer, opc command.Type, payload json.R
 	return err
 }
 
-func (gs *GatewayState) Read(client io.Reader) (*GatewayPayload, int, error) {
-	if gs.closed.Load() {
+func (st *State) Read(client io.Reader) (*GatewayPayload, int, error) {
+	if st.closed.Load() {
 		return nil, 0, net.ErrClosed
 	}
 
@@ -246,13 +246,13 @@ func (gs *GatewayState) Read(client io.Reader) (*GatewayPayload, int, error) {
 		return nil, 0, fmt.Errorf("failed to unmarshal packet. %w", err)
 	}
 
-	prevSeq := gs.sequenceNumber.Load()
+	prevSeq := st.sequenceNumber.Load()
 	packet.Outdated = prevSeq >= packet.Seq
 	if packet.Seq-prevSeq > 1 {
 		return nil, 0, ErrSequenceNumberSkipped
 	}
 	if !packet.Outdated {
-		gs.sequenceNumber.Store(packet.Seq)
+		st.sequenceNumber.Store(packet.Seq)
 	}
 
 	if packet.EventName == event.Ready {
@@ -261,52 +261,52 @@ func (gs *GatewayState) Read(client io.Reader) (*GatewayPayload, int, error) {
 		if err := json.Unmarshal(packet.Data, &ready); err != nil || ready.SessionID == "" {
 			return packet, len(data), fmt.Errorf("failed to extract session id from ready event. %w", err)
 		}
-		gs.sessionID = ready.SessionID
+		st.sessionID = ready.SessionID
 	}
 	return packet, len(data), nil
 }
 
-func (gs *GatewayState) ProcessNextMessage(pipe io.Reader, textWriter, closeWriter io.Writer) (payload *GatewayPayload, redundant bool, err error) {
-	payload, _, err = gs.Read(pipe)
+func (st *State) ProcessNextMessage(pipe io.Reader, textWriter, closeWriter io.Writer) (payload *GatewayPayload, redundant bool, err error) {
+	payload, _, err = st.Read(pipe)
 	if errors.Is(err, ErrSequenceNumberSkipped) {
-		_ = gs.WriteRestartClose(closeWriter)
+		_ = st.WriteRestartClose(closeWriter)
 		return nil, true, err
 	}
 	if err != nil {
 		return nil, false, err
 	}
 
-	redundant, err = gs.ProcessPayload(payload, textWriter, closeWriter)
+	redundant, err = st.ProcessPayload(payload, textWriter, closeWriter)
 	return payload, redundant, err
 }
 
-func (gs *GatewayState) ProcessPayload(payload *GatewayPayload, textWriter, closeWriter io.Writer) (redundant bool, err error) {
+func (st *State) ProcessPayload(payload *GatewayPayload, textWriter, closeWriter io.Writer) (redundant bool, err error) {
 	switch payload.Op {
 	case opcode.Heartbeat:
-		if err := gs.Heartbeat(textWriter); err != nil {
+		if err := st.Heartbeat(textWriter); err != nil {
 			return false, fmt.Errorf("discord requested heartbeat, but was unable to send one. %w", err)
 		}
 	case opcode.Hello:
-		if gs.HaveIdentified() {
+		if st.HaveIdentified() {
 			return true, nil
 		}
-		if gs.HaveSessionID() {
-			if err := gs.Resume(textWriter); err != nil {
+		if st.HaveSessionID() {
+			if err := st.Resume(textWriter); err != nil {
 				return false, fmt.Errorf("sending resume failed. closing. %w", err)
 			}
 		} else {
-			if err := gs.Identify(textWriter); err != nil {
+			if err := st.Identify(textWriter); err != nil {
 				return false, fmt.Errorf("identify failed. closing. %w", err)
 			}
 		}
 	case opcode.Dispatch:
-		if !gs.EventIsWhitelisted(payload.EventName) {
+		if !st.EventIsWhitelisted(payload.EventName) {
 			return true, nil
 		}
 	case opcode.InvalidSession:
-		gs.InvalidateSession(closeWriter)
+		st.InvalidateSession(closeWriter)
 	case opcode.Reconnect:
-		_ = gs.WriteRestartClose(closeWriter)
+		_ = st.WriteRestartClose(closeWriter)
 	default:
 		// unhandled operation code
 		// TODO: logging?
@@ -316,33 +316,33 @@ func (gs *GatewayState) ProcessPayload(payload *GatewayPayload, textWriter, clos
 }
 
 // ProcessCloseCode process close code sent by discord
-func (gs *GatewayState) ProcessCloseCode(code closecode.Type, reason string, closeWriter io.Writer) error {
+func (st *State) ProcessCloseCode(code closecode.Type, reason string, closeWriter io.Writer) error {
 	switch code {
 	case closecode.ClientReconnecting, closecode.UnknownError:
 		// allow resume
 	default:
-		gs.InvalidateSession(closeWriter)
+		st.InvalidateSession(closeWriter)
 	}
 	return &DiscordError{CloseCode: code, Reason: reason}
 }
 
 // Heartbeat Close method may be used if Write fails
-func (gs *GatewayState) Heartbeat(client io.Writer) error {
-	seq := gs.SequenceNumber()
+func (st *State) Heartbeat(client io.Writer) error {
+	seq := st.SequenceNumber()
 	seqStr := strconv.FormatInt(seq, 10)
-	return gs.Write(client, command.Heartbeat, []byte(seqStr))
+	return st.Write(client, command.Heartbeat, []byte(seqStr))
 }
 
 // Identify Close method may be used if Write fails
-func (gs *GatewayState) Identify(client io.Writer) error {
+func (st *State) Identify(client io.Writer) error {
 	identifyPacket := &Identify{
-		BotToken:       gs.botToken,
-		Properties:     &gs.connectionProperties,
+		BotToken:       st.botToken,
+		Properties:     &st.connectionProperties,
 		Compress:       false,
 		LargeThreshold: 0,
-		Shard:          [2]uint{uint(gs.shardID), gs.totalNumberOfShards},
+		Shard:          [2]uint{uint(st.shardID), st.totalNumberOfShards},
 		Presence:       nil,
-		Intents:        gs.intents,
+		Intents:        st.intents,
 	}
 
 	data, err := json.Marshal(identifyPacket)
@@ -350,60 +350,60 @@ func (gs *GatewayState) Identify(client io.Writer) error {
 		return fmt.Errorf("unable to marshal identify payload. %w", err)
 	}
 
-	if err = gs.Write(client, command.Identify, data); err != nil {
+	if err = st.Write(client, command.Identify, data); err != nil {
 		return err
 	}
 
-	gs.sentResumeOrIdentify.Store(true)
+	st.sentResumeOrIdentify.Store(true)
 	return nil
 }
 
 // Resume Close method may be used if Write fails
-func (gs *GatewayState) Resume(client io.Writer) error {
-	if !gs.HaveSessionID() {
+func (st *State) Resume(client io.Writer) error {
+	if !st.HaveSessionID() {
 		return errors.New("missing session id, can not resume connection")
 	}
 	resumePacket := &Resume{
-		BotToken:       gs.botToken,
-		SessionID:      gs.sessionID,
-		SequenceNumber: gs.SequenceNumber(),
+		BotToken:       st.botToken,
+		SessionID:      st.sessionID,
+		SequenceNumber: st.SequenceNumber(),
 	}
 	data, err := json.Marshal(&resumePacket)
 	if err != nil {
 		return fmt.Errorf("unable to marshal resume payload. %w", err)
 	}
 
-	if err = gs.Write(client, command.Resume, data); err != nil {
+	if err = st.Write(client, command.Resume, data); err != nil {
 		return err
 	}
 
-	gs.sentResumeOrIdentify.Store(true)
+	st.sentResumeOrIdentify.Store(true)
 	return nil
 }
 
-func (gs *GatewayState) SessionID() string {
-	return gs.sessionID
+func (st *State) SessionID() string {
+	return st.sessionID
 }
 
-func (gs *GatewayState) HaveSessionID() bool {
-	return gs.sessionID != ""
+func (st *State) HaveSessionID() bool {
+	return st.sessionID != ""
 }
 
-func (gs *GatewayState) HaveIdentified() bool {
-	return gs.sentResumeOrIdentify.Load()
+func (st *State) HaveIdentified() bool {
+	return st.sentResumeOrIdentify.Load()
 }
 
-func (gs *GatewayState) InvalidateSession(closeWriter io.Writer) {
-	if err := gs.WriteNormalClose(closeWriter); err != nil && !errors.Is(err, net.ErrClosed) {
+func (st *State) InvalidateSession(closeWriter io.Writer) {
+	if err := st.WriteNormalClose(closeWriter); err != nil && !errors.Is(err, net.ErrClosed) {
 		// TODO: so what?
 	}
-	gs.sessionID = ""
+	st.sessionID = ""
 	//gs.state = nil
 }
 
-func (gs *GatewayState) EventIsWhitelisted(evt event.Type) bool {
-	if gs.whitelist != nil {
-		return gs.whitelist.Contains(evt)
+func (st *State) EventIsWhitelisted(evt event.Type) bool {
+	if st.whitelist != nil {
+		return st.whitelist.Contains(evt)
 	}
 
 	return true

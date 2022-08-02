@@ -65,7 +65,7 @@ type ShardConfig struct {
 }
 
 func NewShard(shardID gateway.ShardID, botToken string, handler gateway.Handler, options ...gateway.Option) (*Shard, error) {
-	state, err := gateway.NewGatewayState(botToken, options...)
+	state, err := gateway.NewState(botToken, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ type Shard struct {
 	botToken string
 
 	Conn        net.Conn
-	State       *gateway.GatewayState
+	State       *gateway.State
 	handler     gateway.Handler
 	textWriter  io.Writer
 	closeWriter io.Writer
@@ -197,7 +197,7 @@ func (s *Shard) PrepareForReconnect() error {
 	}
 
 	var err error
-	s.State, err = gateway.NewGatewayState(s.botToken, options...)
+	s.State, err = gateway.NewState(s.botToken, options...)
 	return err
 }
 
@@ -301,7 +301,7 @@ func (s *Shard) eventLoop(ctx context.Context) error {
 type heart struct {
 	interval          time.Duration
 	conn              net.Conn
-	shard             *gateway.GatewayState
+	shard             *gateway.State
 	forcedReadTimeout *atomic.Bool
 	gotAck            atomic.Bool
 }
