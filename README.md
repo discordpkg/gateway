@@ -207,9 +207,6 @@ It only reads incoming events and waits to crash. Once any alerts such as warnin
 
 ## Support
 
- - [ ] Voice
-   - [X] operation codes
-   - [X] close codes
  - [x] Gateway
    - [X] operation codes
    - [X] close codes
