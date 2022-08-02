@@ -29,9 +29,6 @@
  - context support
  - Control over reconnect, disconnect, or behavior for handling discord errors
 
-## Design decisions
-
-see [DESIGN.md](DESIGN.md)
 
 ## Simple shard example 
 > This code uses github.com/gobwas/ws, but you are free to use other
