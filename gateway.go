@@ -34,9 +34,9 @@ type Resume struct {
 }
 
 type IdentifyConnectionProperties struct {
-	OS      string `json:"$os"`
-	Browser string `json:"$browser"`
-	Device  string `json:"$device"`
+	OS      string `json:"os"`
+	Browser string `json:"browser"`
+	Device  string `json:"device"`
 }
 
 type Identify struct {
