@@ -9,6 +9,7 @@ import (
 
 //go:generate go run internal/generate/events/main.go
 //go:generate go run internal/generate/opcode/main.go
+//go:generate go run internal/generate/closecode/main.go
 
 type RawMessage = json.RawMessage
 

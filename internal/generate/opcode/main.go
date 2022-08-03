@@ -28,7 +28,7 @@ func parseOpCodes(filePath string) []*OpCodeData {
 		return strings.ToLower(name) == "gateway opcodes"
 	})
 	if len(tables) != 1 {
-		panic("wrong amount of matches for 'gateway events' tables")
+		panic("wrong amount of matches for 'gateway opcodes' tables")
 	}
 	table := tables[0]
 
