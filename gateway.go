@@ -7,6 +7,8 @@ import (
 	"github.com/discordpkg/gateway/event"
 )
 
+//go:generate go run internal/generate/events/main.go
+
 type RawMessage = json.RawMessage
 
 type ShardID uint
