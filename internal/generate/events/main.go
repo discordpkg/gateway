@@ -6,13 +6,6 @@ import (
 	"strings"
 )
 
-const debugPathPrefix = "/home/anders/dev/gateway/"
-const normalPathPrefix = ""
-
-func path(p string) string {
-	return normalPathPrefix + p
-}
-
 type EventData struct {
 	Name  string
 	Value string
