@@ -22,8 +22,13 @@ const (
 	DirectMessages
 	DirectMessageReactions
 	DirectMessageTyping
-	_
+	MessageContent
 	GuildScheduledEvents
+	_
+	_
+	_
+	AutoModerationConfiguration
+	AutoModerationExecution
 )
 
 const Sum = DirectMessages | DirectMessageReactions | DirectMessageTyping | Guilds | GuildBans | GuildEmojisAndStickers | GuildIntegrations | GuildInvites | GuildMembers | GuildMessages | GuildMessageReactions | GuildMessageTyping | GuildPresences | GuildScheduledEvents | GuildVoiceStates | GuildWebhooks | 0
