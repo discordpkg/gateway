@@ -15,7 +15,7 @@ type OpCodeData struct {
 }
 
 func main() {
-	events := parseOpCodes("/home/anders/dev/gateway/internal/discord-api-docs/docs/topics/Opcodes_and_Status_Codes.md")
+	events := parseOpCodes("internal/discord-api-docs/docs/topics/Opcodes_and_Status_Codes.md")
 	sort.Slice(events, func(i, j int) bool {
 		return events[i].Name < events[j].Name
 	})

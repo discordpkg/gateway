@@ -21,7 +21,7 @@ func clearString(str string) string {
 }
 
 func main() {
-	events := parseCloseCodeData("/home/anders/dev/gateway/internal/discord-api-docs/docs/topics/Opcodes_and_Status_Codes.md")
+	events := parseCloseCodeData("internal/discord-api-docs/docs/topics/Opcodes_and_Status_Codes.md")
 	sort.Slice(events, func(i, j int) bool {
 		return events[i].Name < events[j].Name
 	})
