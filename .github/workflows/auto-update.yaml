@@ -31,9 +31,8 @@ jobs:
         if: steps.changed_files.outputs.changed != 0
         uses: peter-evans/create-pull-request@v4
         with:
-            token: ${{ secrets.PAT }}
-            commit-message: chore: update discord values
-            title: chore: update generated Discord values
+            commit-message: "chore: update discord values"
+            title: "chore: update generated Discord values"
             body: |
               - update snapshot
               - generate values
