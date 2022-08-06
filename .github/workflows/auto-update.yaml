@@ -1,7 +1,7 @@
 name: Update Discord values
 on:
   schedule:
-    - cron:  '*/5 * * * *'
+    - cron:  '*/12 */1 * * *'
 jobs:
   update-types:
     runs-on: ubuntu-latest
