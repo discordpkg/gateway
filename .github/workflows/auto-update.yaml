@@ -1,0 +1,40 @@
+name: Update Discord values
+on:
+  schedule:
+    - cron:  '10 * * * *'
+jobs:
+  update-types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.18
+        id: go
+
+      - name: Install
+        run: go mod download
+
+      - name: Update discord api snapshot
+        run: git submodule update --remote
+        
+      - name: Generate
+        run: go generate
+        
+      - name: Identify changed files
+        id: changed_files
+        run: echo "::set-output name=changed::$(git status --porcelain | grep .go | wc -l)"
+
+      - name: Create Pull Request
+        if: steps.changed_files.outputs.changed != 0
+        uses: peter-evans/create-pull-request@v4
+        with:
+            token: ${{ secrets.PAT }}
+            commit-message: chore: update discord values
+            title: chore: update generated Discord values
+            body: |
+              - update snapshot
+              - generate values
+            branch: codegen/auto-generate
