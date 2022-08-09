@@ -7,6 +7,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: recursive
       
       - name: Setup Go
         uses: actions/setup-go@v1
@@ -18,7 +20,7 @@ jobs:
         run: go mod download
 
       - name: Update discord api snapshot
-        run: git submodule update --recursive --init
+        run: git submodule update --recursive --remote
         
       - name: Generate
         run: go generate
