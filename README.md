@@ -50,16 +50,16 @@ import (
    "github.com/discordpkg/gateway/event"
    "github.com/discordpkg/gateway/intent"
    "github.com/discordpkg/gateway/log"
-   "github.com/discordpkg/gateway/gatewayshard"
+   "github.com/discordpkg/gateway/shard"
    "net"
    "os"
 )
 
 func main() {
-   shard, err := gatewayshard.NewShard(0, os.Getenv("DISCORD_TOKEN"), nil,
-      discordgateway.WithGuildEvents(event.All()...),
-      discordgateway.WithDirectMessageEvents(intent.Events(intent.DirectMessageReactions)),
-      discordgateway.WithIdentifyConnectionProperties(&discordgateway.IdentifyConnectionProperties{
+   shardInstance, err := shard.NewShard(0, os.Getenv("DISCORD_TOKEN"), nil,
+      gateway.WithGuildEvents(event.All()...),
+      gateway.WithDirectMessageEvents(intent.Events(intent.DirectMessageReactions)),
+      gateway.WithIdentifyConnectionProperties(&discordgateway.IdentifyConnectionProperties{
          OS:      runtime.GOOS,
          Browser: "github.com/discordpkg/gateway v0",
          Device:  "tester",
@@ -78,21 +78,21 @@ until the connection is lost or a process failed (json unmarshal/marshal, websoc
 You can use the helper methods for the DiscordError to decide when to reconnect:
 ```go
 reconnectStage:
-    if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
+    if _, err := shardInstance.Dial(context.Background(), dialUrl); err != nil {
         log.Fatal("failed to open websocket connection. ", err)
     }
 
-   if err = shard.EventLoop(context.Background()); err != nil {
+   if err = shardInstance.EventLoop(context.Background()); err != nil {
       reconnect := true
 
-      var discordErr *discordgateway.DiscordError
+      var discordErr *gateway.DiscordError
       if errors.As(err, &discordErr) {
          reconnect = discordErr.CanReconnect()
       }
 
       if reconnect {
          logger.Infof("reconnecting: %s", discordErr.Error())
-         if err := shard.PrepareForReconnect(); err != nil {
+         if err := shardInstance.PrepareForReconnect(); err != nil {
             logger.Fatal("failed to prepare for reconnect:", err)
          }
          goto reconnectStage
@@ -104,40 +104,31 @@ reconnectStage:
 Or manually check the close code, operation code, or error:
 ```go
 reconnectStage:
-   if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
+   if _, err := shardInstance.Dial(context.Background(), dialUrl); err != nil {
       log.Fatal("failed to open websocket connection. ", err)
    }
 
-   if op, err := shard.EventLoop(context.Background()); err != nil {
-      var discordErr *discordgateway.DiscordError
+   op, err := shardInstance.EventLoop(context.Background()); 
+   if err != nil {
+      var discordErr *gateway.DiscordError
       if errors.As(err, &discordErr) {
          switch discordErr.CloseCode {
-         case 1001, 4000: // will initiate a resume
-            fallthrough
-         case 4007, 4009: // will do a fresh identify
-            if err := shard.PrepareForReconnect(); err != nil {
-                logger.Fatal("failed to prepare for reconnect:", err)
-            }
-            goto reconnectStage
+         case 1001, 4000, 4007, 4009:
+            // use reconnect logic defined later
          case 4001, 4002, 4003, 4004, 4005, 4008, 4010, 4011, 4012, 4013, 4014:
+            log.Fatal("an error occured:", err)
          default:
-            log.Error(fmt.Errorf("unhandled close error, with discord op code(%d): %d", op, discordErr.Code))
+            log.Fatal(fmt.Errorf("unhandled close error, with discord op code(%d): %d", op, discordErr.Code))
          }
+      } else if !errors.Is(err, net.ErrClosed) {
+         logger.Fatal("an error occured:", err)
       }
-      if errors.Is(err, net.ErrClosed) {
-         log.Debug("connection closed/lost .. will try to reconnect")
-
-         if err := shard.PrepareForReconnect(); err != nil {
-            logger.Fatal("failed to prepare for reconnect:", err)
-         }
-         goto reconnectStage
-      }
-   } else {
-      if err := shard.PrepareForReconnect(); err != nil {
-        logger.Fatal("failed to prepare for reconnect:", err)
-      }
-      goto reconnectStage
+   }   
+   
+   if err := shardInstance.PrepareForReconnect(); err != nil {
+      logger.Fatal("failed to prepare for reconnect:", err)
    }
+   goto reconnectStage
 }
 ```
 
@@ -156,30 +147,29 @@ import (
 	"context"
 	"fmt"
 	"github.com/discordpkg/gateway"
-	"github.com/discordpkg/gateway/event"
-	"github.com/discordpkg/gateway/opcode"
+	"github.com/discordpkg/gateway/intent"
 	"github.com/discordpkg/gateway/command"
-	"github.com/discordpkg/gateway/gatewayshard"
+	"github.com/discordpkg/gateway/shard"
 	"os"
 )
 
 func main() {
-	shard, err := gatewayshard.NewShard(0, os.Getenv("DISCORD_TOKEN"), nil,
-		discordgateway.WithIntents(intent.Guilds),
+	shardInstance, err := shard.NewShard(0, os.Getenv("DISCORD_TOKEN"), nil,
+		gateway.WithIntents(intent.Guilds),
 	)
 	if err != nil {
 		panic(err)
 	}
 
 	dialUrl := "wss://gateway.discord.gg/?v=9&encoding=json"
-	if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
+	if _, err := shardInstance.Dial(context.Background(), dialUrl); err != nil {
        panic(fmt.Errorf("failed to open websocket connection. ", err))
 	}
 
    // ...
    
 	req := `{"guild_id":"23423","limit":0,"query":""}`
-	if err := shard.Write(command.RequestGuildMembers, []byte(req)); err != nil {
+	if err := shardInstance.Write(command.RequestGuildMembers, []byte(req)); err != nil {
        panic(fmt.Errorf("failed to request guild members", err))
     }
     
