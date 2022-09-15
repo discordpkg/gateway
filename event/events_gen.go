@@ -34,7 +34,9 @@ const (
 	GuildScheduledEventUserRemove       Type = "GUILD_SCHEDULED_EVENT_USER_REMOVE"
 	GuildStickersUpdate                 Type = "GUILD_STICKERS_UPDATE"
 	GuildUpdate                         Type = "GUILD_UPDATE"
+	Heartbeat                           Type = "HEARTBEAT"
 	Hello                               Type = "HELLO"
+	Identify                            Type = "IDENTIFY"
 	IntegrationCreate                   Type = "INTEGRATION_CREATE"
 	IntegrationDelete                   Type = "INTEGRATION_DELETE"
 	IntegrationUpdate                   Type = "INTEGRATION_UPDATE"
@@ -53,6 +55,8 @@ const (
 	PresenceUpdate                      Type = "PRESENCE_UPDATE"
 	Ready                               Type = "READY"
 	Reconnect                           Type = "RECONNECT"
+	RequestGuildMembers                 Type = "REQUEST_GUILD_MEMBERS"
+	Resume                              Type = "RESUME"
 	Resumed                             Type = "RESUMED"
 	StageInstanceCreate                 Type = "STAGE_INSTANCE_CREATE"
 	StageInstanceDelete                 Type = "STAGE_INSTANCE_DELETE"
@@ -64,13 +68,15 @@ const (
 	ThreadMembersUpdate                 Type = "THREAD_MEMBERS_UPDATE"
 	ThreadUpdate                        Type = "THREAD_UPDATE"
 	TypingStart                         Type = "TYPING_START"
+	UpdatePresence                      Type = "UPDATE_PRESENCE"
+	UpdateVoiceState                    Type = "UPDATE_VOICE_STATE"
 	UserUpdate                          Type = "USER_UPDATE"
 	VoiceServerUpdate                   Type = "VOICE_SERVER_UPDATE"
 	VoiceStateUpdate                    Type = "VOICE_STATE_UPDATE"
 	WebhooksUpdate                      Type = "WEBHOOKS_UPDATE"
 )
 
-// Returns all 63 discord events
+// Returns all 69 discord events
 func All() []Type {
 	return []Type{
 		ApplicationCommandPermissionsUpdate,
@@ -102,7 +108,9 @@ func All() []Type {
 		GuildScheduledEventUserRemove,
 		GuildStickersUpdate,
 		GuildUpdate,
+		Heartbeat,
 		Hello,
+		Identify,
 		IntegrationCreate,
 		IntegrationDelete,
 		IntegrationUpdate,
@@ -121,6 +129,8 @@ func All() []Type {
 		PresenceUpdate,
 		Ready,
 		Reconnect,
+		RequestGuildMembers,
+		Resume,
 		Resumed,
 		StageInstanceCreate,
 		StageInstanceDelete,
@@ -132,6 +142,8 @@ func All() []Type {
 		ThreadMembersUpdate,
 		ThreadUpdate,
 		TypingStart,
+		UpdatePresence,
+		UpdateVoiceState,
 		UserUpdate,
 		VoiceServerUpdate,
 		VoiceStateUpdate,
