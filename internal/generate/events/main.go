@@ -12,7 +12,7 @@ type EventData struct {
 }
 
 func main() {
-	events := parseEvents("internal/discord-api-docs/docs/topics/Gateway.md")
+	events := parseEvents("internal/discord-api-docs/docs/topics/Gateway_Events.md")
 	sort.Slice(events, func(i, j int) bool {
 		return events[i].Name < events[j].Name
 	})
