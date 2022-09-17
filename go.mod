@@ -3,7 +3,7 @@ module github.com/discordpkg/gateway
 go 1.18
 
 require (
-	github.com/bradfitz/iter v0.0.0-20191230175014-e8f45d346db8
+	github.com/beefsack/go-rate v0.0.0-20220214233405-116f4ca011a0
 	github.com/gobwas/ws v1.0.2
 	go.uber.org/atomic v1.9.0
 )

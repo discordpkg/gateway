@@ -16,6 +16,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/discordpkg/gateway/intent"
 	"github.com/discordpkg/gateway/opcode"
@@ -76,16 +77,11 @@ func NewState(botToken string, options ...Option) (*State, error) {
 	}
 
 	// rate limits
-	if st.commandRateLimitChan == nil {
-		var closer io.Closer
-		st.commandRateLimitChan, closer = NewCommandRateLimiter()
-		st.closers = append(st.closers, closer)
+	if st.commandRateLimiter == nil {
+		st.commandRateLimiter = NewCommandRateLimiter()
 	}
 	if st.identifyRateLimiter == nil {
-		channel, closer := NewIdentifyRateLimiter()
-		st.closers = append(st.closers, closer)
-
-		st.identifyRateLimiter = &channelTaker{c: channel}
+		st.identifyRateLimiter = NewLocalIdentifyRateLimiter()
 	}
 
 	// connection properties
@@ -133,7 +129,7 @@ type State struct {
 	shardID              ShardID
 	totalNumberOfShards  uint
 	connectionProperties *IdentifyConnectionProperties
-	commandRateLimitChan <-chan int
+	commandRateLimiter   CommandRateLimiter
 	identifyRateLimiter  IdentifyRateLimiter
 	botToken             string
 }
@@ -196,12 +192,15 @@ func (st *State) Write(client io.Writer, opc command.Type, payload json.RawMessa
 		return net.ErrClosed
 	}
 
+	// heartbeat should always be sent.
+	// Try reserving some calls for heartbeats when you configure your rate limiter.
 	if opc != command.Heartbeat {
-		// heartbeat should always be sent, regardless!
-		<-st.commandRateLimitChan
+		if ok, timeout := st.commandRateLimiter.Try(); !ok {
+			<-time.After(timeout)
+		}
 	}
 	if opc == command.Identify {
-		if available := st.identifyRateLimiter.Take(st.shardID); !available {
+		if available, _ := st.identifyRateLimiter.Try(st.shardID); !available {
 			return errors.New("identify rate limiter denied shard to identify")
 		}
 	}

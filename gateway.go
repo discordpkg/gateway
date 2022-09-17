@@ -3,6 +3,7 @@ package gateway
 import (
 	"github.com/discordpkg/gateway/intent"
 	"github.com/discordpkg/gateway/json"
+	"time"
 
 	"github.com/discordpkg/gateway/event"
 )
@@ -54,5 +55,9 @@ type Identify struct {
 }
 
 type IdentifyRateLimiter interface {
-	Take(ShardID) bool
+	Try(ShardID) (bool, time.Duration)
+}
+
+type CommandRateLimiter interface {
+	Try() (bool, time.Duration)
 }

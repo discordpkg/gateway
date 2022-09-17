@@ -79,9 +79,9 @@ func WithIdentifyConnectionProperties(properties *IdentifyConnectionProperties) 
 	}
 }
 
-func WithCommandRateLimiter(ratelimiter <-chan int) Option {
+func WithCommandRateLimiter(ratelimiter CommandRateLimiter) Option {
 	return func(st *State) error {
-		st.commandRateLimitChan = ratelimiter
+		st.commandRateLimiter = ratelimiter
 		return nil
 	}
 }

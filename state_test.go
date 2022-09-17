@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bradfitz/iter"
 	"github.com/discordpkg/gateway/closecode"
 	"github.com/discordpkg/gateway/intent"
 
@@ -777,37 +776,6 @@ func TestGatewayState_Process(t *testing.T) {
 		}
 		if client.Closed() {
 			t.Error("client closed")
-		}
-	})
-}
-
-func TestNewRateLimiter(t *testing.T) {
-	t.Run("10/10ms", func(t *testing.T) {
-		rl, closer := NewRateLimiter(10, 10*time.Millisecond)
-		defer closer.Close()
-
-		for range iter.N(10) {
-			select {
-			case <-rl:
-			default:
-				t.Fatal("no token available")
-			}
-		}
-
-		select {
-		case <-rl:
-			t.Fatal("there should be no token")
-		default:
-		}
-
-		<-time.After(11 * time.Millisecond)
-		select {
-		case <-rl:
-		default:
-			t.Fatal("no token available")
-		}
-		if len(rl) != 9 {
-			t.Fatal("expected there to be only 9 tokens left")
 		}
 	})
 }
