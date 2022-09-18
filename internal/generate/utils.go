@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"go/format"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"regexp"
@@ -32,7 +31,7 @@ func Generate(data any, templatePath, targetPath string) {
 		panic(fmt.Errorf("unable to format generated code: %w", err))
 	}
 
-	if err := ioutil.WriteFile(targetPath, formatted, 0644); err != nil {
+	if err := os.WriteFile(targetPath, formatted, 0644); err != nil {
 		panic(fmt.Errorf("failed to save generated code: %w", err))
 	}
 }

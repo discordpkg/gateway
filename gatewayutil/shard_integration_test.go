@@ -1,4 +1,4 @@
-package shard
+package gatewayutil
 
 import (
 	"context"
@@ -21,10 +21,10 @@ func TestShardIntents(t *testing.T) {
 		}),
 	)
 	if err != nil {
-		t.Fatal("failed to create shard", err)
+		t.Fatal("failed to create gatewayutil", err)
 	}
 	if shard == nil {
-		t.Fatal("shard instance is nil")
+		t.Fatal("gatewayutil instance is nil")
 	}
 }
 
@@ -56,7 +56,7 @@ func TestShard(t *testing.T) {
 		}),
 	)
 	if err != nil {
-		t.Fatal("failed to create shard", err)
+		t.Fatal("failed to create gatewayutil", err)
 	}
 
 	if _, err = shard.Dial(ctx, "wss://gateway.discord.gg/?v=10&encoding=json"); err != nil {

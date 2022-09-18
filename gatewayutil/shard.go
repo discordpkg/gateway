@@ -1,4 +1,4 @@
-package shard
+package gatewayutil
 
 import (
 	"context"
@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"github.com/discordpkg/gateway"
 	"github.com/discordpkg/gateway/command"
-	"github.com/discordpkg/gateway/shard/log"
+	"github.com/discordpkg/gateway/gatewayutil/log"
 	"io"
 	"net"
 	"strings"
 	"time"
 
-	"github.com/discordpkg/gateway/closecode"
 	"github.com/discordpkg/gateway/intent"
 
 	"github.com/gobwas/ws"
@@ -60,7 +59,7 @@ type ShardConfig struct {
 	IdentifyRateLimiter  gateway.IdentifyRateLimiter
 
 	// Intents does not have to be specified as these are derived from GuildEvents
-	// and DMEvents. However, you can specify intents and it will be merged with the derived intents.
+	// and DMEvents. However, you can specify intents that will be merged with the derived intents.
 	Intents intent.Type
 }
 
@@ -108,11 +107,12 @@ type Shard struct {
 
 // Dial sets up the websocket connection before identifying with the gateway.
 // The url must be complete and specify api version and encoding:
-//  "wss://gateway.discord.gg/"                     => invalid
-//  "wss://gateway.discord.gg/?v=10"                 => invalid
-//  "wss://gateway.discord.gg/?v=10&encoding=json"   => valid
+//
+//	"wss://gateway.discord.gg/"                     => invalid
+//	"wss://gateway.discord.gg/?v=10"                 => invalid
+//	"wss://gateway.discord.gg/?v=10&encoding=json"   => valid
 func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn, err error) {
-	URLString, err = gateway.ValidateDialURL(URLString)
+	URLString, err = ValidateDialURL(URLString)
 	if err != nil {
 		return nil, err
 	}
@@ -141,24 +141,24 @@ func (s *Shard) Write(op command.Type, data []byte) error {
 	return s.State.Write(s.textWriter, op, data)
 }
 
-// Close closes the shard connection, session can not be resumed.
+// Close closes the gatewayutil connection, session can not be resumed.
 func (s *Shard) Close() error {
 	if s.State.Closed() {
 		return net.ErrClosed
 	}
 
-	_ = s.State.WriteNormalClose(s.closeWriter)
+	_ = s.State.WriteClose(s.closeWriter, gateway.NormalCloseCode)
 	_ = s.Conn.Close()
 	return nil
 }
 
-// CloseWithReconnectIntent closes the shard connection, but allows the session to be resumed later on.
+// CloseWithReconnectIntent closes the gatewayutil connection, but allows the session to be resumed later on.
 func (s *Shard) CloseWithReconnectIntent() error {
 	if s.State.Closed() {
 		return net.ErrClosed
 	}
 
-	_ = s.State.WriteRestartClose(s.closeWriter)
+	_ = s.State.WriteClose(s.closeWriter, gateway.RestartCloseCode)
 	_ = s.Conn.Close()
 	return nil
 }
@@ -167,20 +167,10 @@ func (s *Shard) writer(op ws.OpCode) io.Writer {
 	return &ioWriteFlusher{wsutil.NewWriter(s.Conn, ws.StateClientSide, op)}
 }
 
-func writeClose(closer func(io.Writer) error, conn net.Conn, reason string) error {
-	log.Info("shard sent close frame: ", reason)
-	closeWriter := &ioWriteFlusher{wsutil.NewWriter(conn, ws.StateClientSide, ws.OpClose)}
-	if err := closer(closeWriter); err != nil && !errors.Is(err, net.ErrClosed) {
-		// if the connection is already closed, it's not a big deal that we can't write the close code
-		return fmt.Errorf("failed to write close frame. %w", err)
-	}
-	return nil
-}
-
 func (s *Shard) EventLoop(ctx context.Context) error {
 	defer func() {
 		if !s.State.Closed() {
-			_ = s.State.WriteRestartClose(s.closeWriter)
+			_ = s.State.WriteClose(s.closeWriter, gateway.RestartCloseCode)
 			_ = s.Conn.Close()
 		}
 	}()
@@ -246,7 +236,11 @@ func (s *Shard) eventLoop(ctx context.Context) error {
 						_ = s.Conn.Close()
 						return &WebsocketError{Err: net.ErrClosed}
 					}
-					return s.State.ProcessCloseCode(closecode.Type(errClose.Code), errClose.Reason, s.closeWriter)
+
+					return HandleError(s.State, &gateway.WebsocketClosedError{
+						Code:   uint16(errClose.Code),
+						Reason: errClose.Reason,
+					}, s.closeWriter)
 				} else {
 					return &WebsocketError{Err: err}
 				}
@@ -261,23 +255,19 @@ func (s *Shard) eventLoop(ctx context.Context) error {
 			continue
 		}
 
-		payload, redundant, err := s.State.ProcessNextMessage(&rd, s.textWriter, s.closeWriter)
-		if redundant {
-			continue
-		}
+		payload, _, err := s.State.Read(&rd)
 		if err != nil {
-			return err
+			return HandleError(s.State, err, s.closeWriter)
 		}
 
+		if err = s.State.Update(payload, s.textWriter); err != nil {
+			return HandleError(s.State, err, s.closeWriter)
+		}
+
+		// update our heartbeat handler & dispatch events
 		switch payload.Op {
 		case opcode.Dispatch:
-			if s.handler != nil {
-				s.handler(s.shardID, payload.EventName, payload.Data)
-			}
-		case opcode.InvalidSession, opcode.Reconnect:
-			return &gateway.DiscordError{
-				OpCode: payload.Op,
-			}
+			//
 		case opcode.Hello:
 			var hello *gateway.Hello
 			if err := json.Unmarshal(payload.Data, &hello); err != nil {
@@ -291,9 +281,8 @@ func (s *Shard) eventLoop(ctx context.Context) error {
 			pulser.forcedReadTimeout = &forcedReadTimeout
 
 			go pulser.pulser(ctx, life, s.textWriter)
-		case opcode.HeartbeatACK:
-			pulser.gotAck.Store(true)
 		default:
+			pulser.update(payload)
 		}
 	}
 }
@@ -306,8 +295,15 @@ type heart struct {
 	gotAck            atomic.Bool
 }
 
+func (h *heart) update(payload *gateway.Payload) {
+	switch payload.Op {
+	case opcode.HeartbeatACK:
+		h.gotAck.Store(true)
+	}
+}
+
 func (h *heart) pulser(ctx context.Context, eventLoopCtx context.Context, writer io.Writer) {
-	// shard <-> pulser
+	// gatewayutil <-> pulser
 	ticker := time.NewTicker(h.interval)
 	defer ticker.Stop()
 
@@ -335,13 +331,17 @@ loop:
 		}
 	}
 	if h.shard.Closed() {
-		// it was closed by the main go routine for this shard
+		// it was closed by the main go routine for this gatewayutil
 		// so it should not be handing on read anymore
 		return
 	}
 
 	plannedTimeoutWindow := 5 * time.Second
-	if err := writeClose(h.shard.WriteRestartClose, h.conn, "heart beat failure"); err != nil {
+
+	log.Info("gatewayutil sent close frame: ", "heart beat failure")
+	closeWriter := &ioWriteFlusher{wsutil.NewWriter(h.conn, ws.StateClientSide, ws.OpClose)}
+	if err := h.shard.WriteClose(closeWriter, gateway.RestartCloseCode); err != nil && !errors.Is(err, net.ErrClosed) {
+		// if the connection is already closed, it's not a big deal that we can't write the close code
 		plannedTimeoutWindow = 100 * time.Millisecond
 	}
 

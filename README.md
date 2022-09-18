@@ -50,16 +50,18 @@ import (
    "github.com/discordpkg/gateway/event"
    "github.com/discordpkg/gateway/intent"
    "github.com/discordpkg/gateway/log"
-   "github.com/discordpkg/gateway/shard"
+   "github.com/discordpkg/gateway/gatewayutil"
    "net"
    "os"
 )
 
 func main() {
-   shardInstance, err := shard.NewShard(0, os.Getenv("DISCORD_TOKEN"), nil,
+   shard, err := gatewayutil.NewShard(0, os.Getenv("DISCORD_TOKEN"), nil,
       gateway.WithGuildEvents(event.All()...),
+      gateway.WithCommandRateLimiter(gatewayutil.NewCommandRateLimiter()),
+      gateway.WithIdentifyRateLimiter(gatewayutil.NewLocalIdentifyRateLimiter()),
       gateway.WithDirectMessageEvents(intent.Events(intent.DirectMessageReactions)),
-      gateway.WithIdentifyConnectionProperties(&discordgateway.IdentifyConnectionProperties{
+      gateway.WithIdentifyConnectionProperties(&gateway.IdentifyConnectionProperties{
          OS:      runtime.GOOS,
          Browser: "github.com/discordpkg/gateway v0",
          Device:  "tester",
@@ -78,11 +80,11 @@ until the connection is lost or a process failed (json unmarshal/marshal, websoc
 You can use the helper methods for the DiscordError to decide when to reconnect:
 ```go
 reconnectStage:
-    if _, err := shardInstance.Dial(context.Background(), dialUrl); err != nil {
+    if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
         log.Fatal("failed to open websocket connection. ", err)
     }
 
-   if err = shardInstance.EventLoop(context.Background()); err != nil {
+   if err = shard.EventLoop(context.Background()); err != nil {
       reconnect := true
 
       var discordErr *gateway.DiscordError
@@ -92,7 +94,7 @@ reconnectStage:
 
       if reconnect {
          logger.Infof("reconnecting: %s", discordErr.Error())
-         if err := shardInstance.PrepareForReconnect(); err != nil {
+         if err := shard.PrepareForReconnect(); err != nil {
             logger.Fatal("failed to prepare for reconnect:", err)
          }
          goto reconnectStage
@@ -104,11 +106,11 @@ reconnectStage:
 Or manually check the close code, operation code, or error:
 ```go
 reconnectStage:
-   if _, err := shardInstance.Dial(context.Background(), dialUrl); err != nil {
+   if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
       log.Fatal("failed to open websocket connection. ", err)
    }
 
-   op, err := shardInstance.EventLoop(context.Background()); 
+   op, err := shard.EventLoop(context.Background()); 
    if err != nil {
       var discordErr *gateway.DiscordError
       if errors.As(err, &discordErr) {
@@ -125,7 +127,7 @@ reconnectStage:
       }
    }   
    
-   if err := shardInstance.PrepareForReconnect(); err != nil {
+   if err := shard.PrepareForReconnect(); err != nil {
       logger.Fatal("failed to prepare for reconnect:", err)
    }
    goto reconnectStage
@@ -140,7 +142,6 @@ the inner object and specify the relevant operation code.
 > Calling Write(..) before dial or instantiating a net.Conn object will cause the process to fail. You must be connected.
 
 ```go
-
 package main
 
 import (
@@ -149,27 +150,29 @@ import (
 	"github.com/discordpkg/gateway"
 	"github.com/discordpkg/gateway/intent"
 	"github.com/discordpkg/gateway/command"
-	"github.com/discordpkg/gateway/shard"
+	"github.com/discordpkg/gateway/gatewayutil"
 	"os"
 )
 
 func main() {
-	shardInstance, err := shard.NewShard(0, os.Getenv("DISCORD_TOKEN"), nil,
+	shard, err := gatewayutil.NewShard(0, os.Getenv("DISCORD_TOKEN"), nil,
 		gateway.WithIntents(intent.Guilds),
+        gateway.WithCommandRateLimiter(gatewayutil.NewCommandRateLimiter()),
+        gateway.WithIdentifyRateLimiter(gatewayutil.NewLocalIdentifyRateLimiter()),
 	)
 	if err != nil {
 		panic(err)
 	}
 
 	dialUrl := "wss://gateway.discord.gg/?v=9&encoding=json"
-	if _, err := shardInstance.Dial(context.Background(), dialUrl); err != nil {
+	if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
        panic(fmt.Errorf("failed to open websocket connection. ", err))
 	}
 
    // ...
    
 	req := `{"guild_id":"23423","limit":0,"query":""}`
-	if err := shardInstance.Write(command.RequestGuildMembers, []byte(req)); err != nil {
+	if err := shard.Write(command.RequestGuildMembers, []byte(req)); err != nil {
        panic(fmt.Errorf("failed to request guild members", err))
     }
     
@@ -199,7 +202,7 @@ It only reads incoming events and waits to crash. Once any alerts such as warnin
    - [X] close codes
    - [X] Intents
    - [x] Events
-   - [ ] Commands
+   - [x] Commands
    - [x] JSON
    - [ ] ETF
    - [x] Rate limit

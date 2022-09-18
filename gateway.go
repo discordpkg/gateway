@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"fmt"
 	"github.com/discordpkg/gateway/intent"
 	"github.com/discordpkg/gateway/json"
 	"time"
@@ -60,4 +61,15 @@ type IdentifyRateLimiter interface {
 
 type CommandRateLimiter interface {
 	Try() (bool, time.Duration)
+}
+
+type WebsocketClosedError struct {
+	Code   uint16
+	Reason string
+}
+
+var _ error = &WebsocketClosedError{}
+
+func (err *WebsocketClosedError) Error() string {
+	return fmt.Sprintf("websocket closed: %d %s", int64(err.Code), err.Reason)
 }

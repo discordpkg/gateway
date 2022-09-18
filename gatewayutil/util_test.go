@@ -1,11 +1,12 @@
-package gateway
+package gatewayutil
 
 import (
+	"github.com/discordpkg/gateway"
 	"testing"
 )
 
 func TestClientShard(t *testing.T) {
-	t.Run("one-shard", func(t *testing.T) {
+	t.Run("one-gatewayutil", func(t *testing.T) {
 		randomSnowflakes := []uint64{
 			345573676574567,
 			47890435843,
@@ -19,7 +20,7 @@ func TestClientShard(t *testing.T) {
 
 		for _, s := range randomSnowflakes {
 			if DeriveShardID(s, 1) != 0 {
-				t.Errorf("expected shard id to be 0, got %d", s)
+				t.Errorf("expected gatewayutil id to be 0, got %d", s)
 			}
 		}
 	})
@@ -32,8 +33,8 @@ func TestClientShard(t *testing.T) {
 		for i := range snowflakes {
 			s := shift(uint64(i))
 			shardID := DeriveShardID(s, uint(len(snowflakes)))
-			if shardID != ShardID(i) {
-				t.Errorf("expected shard id to be %d, got %d", i, shardID)
+			if shardID != gateway.ShardID(i) {
+				t.Errorf("expected gatewayutil id to be %d, got %d", i, shardID)
 			}
 		}
 	})

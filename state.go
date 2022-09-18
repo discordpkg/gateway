@@ -11,7 +11,6 @@ import (
 	"github.com/discordpkg/gateway/json"
 	"go.uber.org/atomic"
 	"io"
-	"io/ioutil"
 	"net"
 	"runtime"
 	"strconv"
@@ -27,7 +26,7 @@ const (
 	RestartCloseCode uint16 = 1012
 )
 
-type GatewayPayload struct {
+type Payload struct {
 	Op        opcode.Type     `json:"op"`
 	Data      json.RawMessage `json:"d"`
 	Seq       int64           `json:"s,omitempty"`
@@ -78,10 +77,10 @@ func NewState(botToken string, options ...Option) (*State, error) {
 
 	// rate limits
 	if st.commandRateLimiter == nil {
-		st.commandRateLimiter = NewCommandRateLimiter()
+		return nil, errors.New("missing command rate limiter - try 'gatewayutil.NewCommandRateLimiter()'")
 	}
 	if st.identifyRateLimiter == nil {
-		st.identifyRateLimiter = NewLocalIdentifyRateLimiter()
+		return nil, errors.New("missing identify rate limiter - try 'gatewayutil.NewLocalIdentifyRateLimiter()'")
 	}
 
 	// connection properties
@@ -109,7 +108,7 @@ func NewState(botToken string, options ...Option) (*State, error) {
 }
 
 // State should be discarded after the connection has closed.
-// reconnect must create a new shard instance.
+// reconnect must create a new gatewayutil instance.
 type State struct {
 	sequenceNumber atomic.Int64
 	closed         atomic.Bool
@@ -137,7 +136,7 @@ type State struct {
 func (st *State) String() string {
 	data := ""
 	data += fmt.Sprintln("device:", st.connectionProperties.Device)
-	data += fmt.Sprintln(fmt.Sprintf("shard: %d / %d", st.shardID, st.totalNumberOfShards))
+	data += fmt.Sprintln(fmt.Sprintf("gatewayutil: %d / %d", st.shardID, st.totalNumberOfShards))
 	data += fmt.Sprintln("intents:", st.intents)
 	data += fmt.Sprintln("events:", st.intents)
 	return data
@@ -151,15 +150,7 @@ func (st *State) Closed() bool {
 	return st.closed.Load()
 }
 
-func (st *State) WriteNormalClose(client io.Writer) error {
-	return st.writeClose(client, NormalCloseCode)
-}
-
-func (st *State) WriteRestartClose(client io.Writer) error {
-	return st.writeClose(client, RestartCloseCode)
-}
-
-func (st *State) writeClose(client io.Writer, code uint16) error {
+func (st *State) WriteClose(client io.Writer, code uint16) error {
 	writeIfOpen := func() error {
 		if st.closed.CAS(false, true) {
 			closeCodeBuf := make([]byte, 2)
@@ -215,7 +206,7 @@ func (st *State) Write(client io.Writer, opc command.Type, payload json.RawMessa
 		}
 	}()
 
-	packet := GatewayPayload{
+	packet := Payload{
 		Op:   opcode.Type(opc),
 		Data: payload,
 	}
@@ -230,17 +221,17 @@ func (st *State) Write(client io.Writer, opc command.Type, payload json.RawMessa
 	return err
 }
 
-func (st *State) Read(client io.Reader) (*GatewayPayload, int, error) {
+func (st *State) Read(client io.Reader) (*Payload, int, error) {
 	if st.closed.Load() {
 		return nil, 0, net.ErrClosed
 	}
 
-	data, err := ioutil.ReadAll(client)
+	data, err := io.ReadAll(client)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to read data. %w", err)
 	}
 
-	packet := &GatewayPayload{}
+	packet := &Payload{}
 	if err = json.Unmarshal(data, packet); err != nil {
 		return nil, 0, fmt.Errorf("failed to unmarshal packet. %w", err)
 	}
@@ -250,79 +241,56 @@ func (st *State) Read(client io.Reader) (*GatewayPayload, int, error) {
 	if packet.Seq-prevSeq > 1 {
 		return nil, 0, ErrSequenceNumberSkipped
 	}
-	if !packet.Outdated {
-		st.sequenceNumber.Store(packet.Seq)
-	}
-
-	if packet.EventName == event.Ready {
-		// need to store session ID for resume
-		ready := Ready{}
-		if err := json.Unmarshal(packet.Data, &ready); err != nil || ready.SessionID == "" {
-			return packet, len(data), fmt.Errorf("failed to extract session id from ready event. %w", err)
-		}
-		st.sessionID = ready.SessionID
-	}
 	return packet, len(data), nil
 }
 
-func (st *State) ProcessNextMessage(pipe io.Reader, textWriter, closeWriter io.Writer) (payload *GatewayPayload, redundant bool, err error) {
-	payload, _, err = st.Read(pipe)
-	if errors.Is(err, ErrSequenceNumberSkipped) {
-		_ = st.WriteRestartClose(closeWriter)
-		return nil, true, err
-	}
-	if err != nil {
-		return nil, false, err
+func (st *State) Update(payload *Payload, writer io.Writer) error {
+	if !payload.Outdated { // TODO: re-evaluate this strategy
+		st.sequenceNumber.Store(payload.Seq)
 	}
 
-	redundant, err = st.ProcessPayload(payload, textWriter, closeWriter)
-	return payload, redundant, err
-}
+	if payload.EventName == event.Ready {
+		// need to store session ID for resume
+		ready := Ready{}
+		if err := json.Unmarshal(payload.Data, &ready); err != nil || ready.SessionID == "" {
+			return fmt.Errorf("failed to extract session id from ready event. %w", err)
+		}
+		st.sessionID = ready.SessionID
+	}
 
-func (st *State) ProcessPayload(payload *GatewayPayload, textWriter, closeWriter io.Writer) (redundant bool, err error) {
 	switch payload.Op {
 	case opcode.Heartbeat:
-		if err := st.Heartbeat(textWriter); err != nil {
-			return false, fmt.Errorf("discord requested heartbeat, but was unable to send one. %w", err)
+		if err := st.Heartbeat(writer); err != nil {
+			return fmt.Errorf("discord requested heartbeat, but was unable to send one. %w", err)
+		}
+	case opcode.InvalidSession:
+		return &DiscordError{
+			OpCode: payload.Op,
+		}
+	case opcode.Reconnect:
+		return &DiscordError{
+			OpCode: payload.Op,
 		}
 	case opcode.Hello:
-		if st.HaveIdentified() {
-			return true, nil
-		}
-		if st.HaveSessionID() {
-			if err := st.Resume(textWriter); err != nil {
-				return false, fmt.Errorf("sending resume failed. closing. %w", err)
-			}
-		} else {
-			if err := st.Identify(textWriter); err != nil {
-				return false, fmt.Errorf("identify failed. closing. %w", err)
+		if !st.HaveIdentified() {
+			if st.HaveSessionID() {
+				if err := st.Resume(writer); err != nil {
+					return fmt.Errorf("sending resume failed. closing. %w", err)
+				}
+			} else {
+				if err := st.Identify(writer); err != nil {
+					return fmt.Errorf("identify failed. closing. %w", err)
+				}
 			}
 		}
 	case opcode.Dispatch:
-		if !st.EventIsWhitelisted(payload.EventName) {
-			return true, nil
-		}
-	case opcode.InvalidSession:
-		st.InvalidateSession(closeWriter)
-	case opcode.Reconnect:
-		_ = st.WriteRestartClose(closeWriter)
+	case opcode.HeartbeatACK:
 	default:
 		// unhandled operation code
 		// TODO: logging?
 	}
 
-	return false, nil
-}
-
-// ProcessCloseCode process close code sent by discord
-func (st *State) ProcessCloseCode(code closecode.Type, reason string, closeWriter io.Writer) error {
-	switch code {
-	case closecode.ClientReconnecting, closecode.UnknownError:
-		// allow resume
-	default:
-		st.InvalidateSession(closeWriter)
-	}
-	return &DiscordError{CloseCode: code, Reason: reason}
+	return nil
 }
 
 // Heartbeat Close method may be used if Write fails
@@ -362,12 +330,11 @@ func (st *State) Resume(client io.Writer) error {
 	if !st.HaveSessionID() {
 		return errors.New("missing session id, can not resume connection")
 	}
-	resumePacket := &Resume{
+	data, err := json.Marshal(&Resume{
 		BotToken:       st.botToken,
 		SessionID:      st.sessionID,
 		SequenceNumber: st.SequenceNumber(),
-	}
-	data, err := json.Marshal(&resumePacket)
+	})
 	if err != nil {
 		return fmt.Errorf("unable to marshal resume payload. %w", err)
 	}
@@ -393,14 +360,14 @@ func (st *State) HaveIdentified() bool {
 }
 
 func (st *State) InvalidateSession(closeWriter io.Writer) {
-	if err := st.WriteNormalClose(closeWriter); err != nil && !errors.Is(err, net.ErrClosed) {
+	if err := st.WriteClose(closeWriter, NormalCloseCode); err != nil && !errors.Is(err, net.ErrClosed) {
 		// TODO: so what?
 	}
 	st.sessionID = ""
 	//gs.state = nil
 }
 
-func (st *State) EventIsWhitelisted(evt event.Type) bool {
+func (st *State) FilterEvent(evt event.Type) bool {
 	if st.whitelist != nil {
 		return st.whitelist.Contains(evt)
 	}

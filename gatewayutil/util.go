@@ -1,15 +1,16 @@
-package gateway
+package gatewayutil
 
 import (
 	"errors"
 	"fmt"
+	"github.com/discordpkg/gateway"
 	"net/url"
 )
 
-func DeriveShardID(snowflake uint64, totalNumberOfShards uint) ShardID {
+func DeriveShardID(snowflake uint64, totalNumberOfShards uint) gateway.ShardID {
 	createdUnix := snowflake >> 22
 	groups := uint64(totalNumberOfShards)
-	return ShardID(createdUnix % groups)
+	return gateway.ShardID(createdUnix % groups)
 }
 
 var supportedAPIVersions = []string{
