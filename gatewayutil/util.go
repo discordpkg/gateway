@@ -3,7 +3,10 @@ package gatewayutil
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
+
+	"github.com/discordpkg/gateway/json"
 
 	"github.com/discordpkg/gateway"
 )
@@ -60,4 +63,18 @@ func ValidateDialURL(URLString string) (string, error) {
 	}
 
 	return u.String(), nil
+}
+
+func ReadPayload(client io.Reader) (*gateway.Payload, int, error) {
+	data, err := io.ReadAll(client)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to read data. %w", err)
+	}
+
+	packet := &gateway.Payload{}
+	if err = json.Unmarshal(data, packet); err != nil {
+		return nil, 0, fmt.Errorf("failed to unmarshal packet. %w", err)
+	}
+
+	return packet, len(data), nil
 }

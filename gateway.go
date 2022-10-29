@@ -31,7 +31,8 @@ type Hello struct {
 }
 
 type Ready struct {
-	SessionID string `json:"session_id"`
+	SessionID        string `json:"session_id"`
+	ResumeGatewayURL string `json:"resume_gateway_url"`
 }
 
 type Resume struct {
