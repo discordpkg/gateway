@@ -2,10 +2,11 @@ package gatewayutil
 
 import (
 	"errors"
+	"io"
+
 	"github.com/discordpkg/gateway"
 	"github.com/discordpkg/gateway/closecode"
 	"github.com/discordpkg/gateway/opcode"
-	"io"
 )
 
 func HandleError(st *gateway.State, err error, closeWriter io.Writer) error {

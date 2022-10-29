@@ -2,9 +2,10 @@ package gateway
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/discordpkg/gateway/intent"
 	"github.com/discordpkg/gateway/json"
-	"time"
 
 	"github.com/discordpkg/gateway/event"
 )

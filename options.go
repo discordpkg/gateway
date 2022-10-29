@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"errors"
+
 	"github.com/discordpkg/gateway/event"
 	"github.com/discordpkg/gateway/intent"
 	"github.com/discordpkg/gateway/internal/util"

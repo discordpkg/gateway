@@ -1,8 +1,9 @@
 package gatewayutil
 
 import (
-	"github.com/discordpkg/gateway"
 	"testing"
+
+	"github.com/discordpkg/gateway"
 )
 
 func TestClientShard(t *testing.T) {

@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/discordpkg/gateway/internal/generate"
 	"sort"
 	"strings"
+
+	"github.com/discordpkg/gateway/internal/generate"
 )
 
 type EventData struct {

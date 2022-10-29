@@ -1,11 +1,12 @@
 package main
 
 import (
-	"github.com/discordpkg/gateway/internal/generate"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/discordpkg/gateway/internal/generate"
 )
 
 type CloseCodeData struct {

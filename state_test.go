@@ -5,12 +5,13 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/discordpkg/gateway/command"
 	"net"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/discordpkg/gateway/command"
 
 	"github.com/discordpkg/gateway/closecode"
 	"github.com/discordpkg/gateway/intent"

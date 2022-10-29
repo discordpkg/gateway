@@ -3,10 +3,11 @@ package gatewayutil
 import (
 	"context"
 	"errors"
-	"github.com/discordpkg/gateway"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/discordpkg/gateway"
 
 	"github.com/discordpkg/gateway/event"
 )

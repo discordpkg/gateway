@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/discordpkg/gateway"
-	"github.com/discordpkg/gateway/command"
-	"github.com/discordpkg/gateway/gatewayutil/log"
 	"io"
 	"net"
 	"strings"
 	"time"
+
+	"github.com/discordpkg/gateway"
+	"github.com/discordpkg/gateway/command"
+	"github.com/discordpkg/gateway/gatewayutil/log"
 
 	"github.com/discordpkg/gateway/intent"
 

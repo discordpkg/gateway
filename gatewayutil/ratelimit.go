@@ -1,9 +1,10 @@
 package gatewayutil
 
 import (
+	"time"
+
 	"github.com/beefsack/go-rate"
 	"github.com/discordpkg/gateway"
-	"time"
 )
 
 func NewCommandRateLimiter() gateway.CommandRateLimiter {

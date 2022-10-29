@@ -3,8 +3,9 @@ package gatewayutil
 import (
 	"errors"
 	"fmt"
-	"github.com/discordpkg/gateway"
 	"net/url"
+
+	"github.com/discordpkg/gateway"
 )
 
 func DeriveShardID(snowflake uint64, totalNumberOfShards uint) gateway.ShardID {
