@@ -10,14 +10,14 @@ import (
 
 // Option for initializing a new gateway state. An option must be deterministic regardless
 // of when or how many times it is executed.
-type Option func(st *State) error
+type Option func(st *State_) error
 
 func WithDirectMessageEvents(events ...event.Type) Option {
 	set := util.Set[event.Type]{}
 	set.Add(events...)
 	deduplicated := set.ToSlice()
 
-	return func(st *State) error {
+	return func(st *State_) error {
 		if len(deduplicated) != len(events) {
 			return errors.New("duplicated direct message events found")
 		}
@@ -35,7 +35,7 @@ func WithGuildEvents(events ...event.Type) Option {
 	set.Add(events...)
 	deduplicated := set.ToSlice()
 
-	return func(st *State) error {
+	return func(st *State_) error {
 		if len(deduplicated) != len(events) {
 			return errors.New("duplicated guild events found")
 		}
@@ -49,7 +49,7 @@ func WithGuildEvents(events ...event.Type) Option {
 }
 
 func WithIntents(intents intent.Type) Option {
-	return func(st *State) error {
+	return func(st *State_) error {
 		if len(st.directMessageEvents) > 0 || len(st.guildEvents) > 0 {
 			return errors.New("'Intents' can not be used along with 'DirectMessageEvents' and/or 'GuildEvents'")
 		}
@@ -60,42 +60,42 @@ func WithIntents(intents intent.Type) Option {
 }
 
 func WithShardID(id ShardID) Option {
-	return func(st *State) error {
+	return func(st *State_) error {
 		st.shardID = id
 		return nil
 	}
 }
 
 func WithShardCount(count uint) Option {
-	return func(st *State) error {
+	return func(st *State_) error {
 		st.totalNumberOfShards = count
 		return nil
 	}
 }
 
 func WithIdentifyConnectionProperties(properties *IdentifyConnectionProperties) Option {
-	return func(st *State) error {
+	return func(st *State_) error {
 		st.connectionProperties = properties
 		return nil
 	}
 }
 
 func WithCommandRateLimiter(ratelimiter CommandRateLimiter) Option {
-	return func(st *State) error {
+	return func(st *State_) error {
 		st.commandRateLimiter = ratelimiter
 		return nil
 	}
 }
 
 func WithIdentifyRateLimiter(ratelimiter IdentifyRateLimiter) Option {
-	return func(st *State) error {
+	return func(st *State_) error {
 		st.identifyRateLimiter = ratelimiter
 		return nil
 	}
 }
 
 func WithSequenceNumber(seq int64) Option {
-	return func(st *State) error {
+	return func(st *State_) error {
 		if seq < 0 {
 			return errors.New("initial sequence number can not be a negative number")
 		}
@@ -106,7 +106,7 @@ func WithSequenceNumber(seq int64) Option {
 }
 
 func WithSessionID(id string) Option {
-	return func(st *State) error {
+	return func(st *State_) error {
 		st.sessionID = id
 		return nil
 	}

@@ -99,7 +99,7 @@ type Shard struct {
 	botToken string
 
 	Conn        net.Conn
-	State       *gateway.State
+	State       *gateway.State_
 	handler     gateway.Handler
 	textWriter  io.Writer
 	closeWriter io.Writer
@@ -291,7 +291,7 @@ func (s *Shard) eventLoop(ctx context.Context) error {
 type heart struct {
 	interval          time.Duration
 	conn              net.Conn
-	shard             *gateway.State
+	shard             *gateway.State_
 	forcedReadTimeout *atomic.Bool
 	gotAck            atomic.Bool
 }

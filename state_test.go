@@ -122,7 +122,7 @@ var defaultOptions = []Option{
 	WithDirectMessageEvents(event.All()...),
 }
 
-func NewDefaultState(extraOptions ...Option) *State {
+func NewDefaultState(extraOptions ...Option) *State_ {
 	st, err := NewState("token", append(defaultOptions, extraOptions...)...)
 	if err != nil {
 		panic(err)

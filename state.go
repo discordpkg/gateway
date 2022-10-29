@@ -51,8 +51,8 @@ func (c DiscordError) CanReconnect() bool {
 	return closecode.CanReconnectAfter(c.CloseCode) || opcode.CanReconnectAfter(c.OpCode)
 }
 
-func NewState(botToken string, options ...Option) (*State, error) {
-	st := &State{
+func NewState(botToken string, options ...Option) (*State_, error) {
+	st := &State_{
 		botToken: botToken,
 	}
 
@@ -108,9 +108,9 @@ func NewState(botToken string, options ...Option) (*State, error) {
 	return st, nil
 }
 
-// State should be discarded after the connection has closed.
+// State_ should be discarded after the connection has closed.
 // reconnect must create a new gatewayutil instance.
-type State struct {
+type State_ struct {
 	sequenceNumber atomic.Int64
 	closed         atomic.Bool
 
@@ -134,7 +134,7 @@ type State struct {
 	botToken             string
 }
 
-func (st *State) String() string {
+func (st *State_) String() string {
 	data := ""
 	data += fmt.Sprintln("device:", st.connectionProperties.Device)
 	data += fmt.Sprintln(fmt.Sprintf("gatewayutil: %d / %d", st.shardID, st.totalNumberOfShards))
@@ -143,15 +143,15 @@ func (st *State) String() string {
 	return data
 }
 
-func (st *State) SequenceNumber() int64 {
+func (st *State_) SequenceNumber() int64 {
 	return st.sequenceNumber.Load()
 }
 
-func (st *State) Closed() bool {
+func (st *State_) Closed() bool {
 	return st.closed.Load()
 }
 
-func (st *State) WriteClose(client io.Writer, code uint16) error {
+func (st *State_) WriteClose(client io.Writer, code uint16) error {
 	writeIfOpen := func() error {
 		if st.closed.CAS(false, true) {
 			closeCodeBuf := make([]byte, 2)
@@ -172,14 +172,14 @@ func (st *State) WriteClose(client io.Writer, code uint16) error {
 	return nil
 }
 
-func (st *State) Close() error {
+func (st *State_) Close() error {
 	for _, closer := range st.closers {
 		_ = closer.Close()
 	}
 	return nil
 }
 
-func (st *State) Write(client io.Writer, opc command.Type, payload json.RawMessage) (err error) {
+func (st *State_) Write(client io.Writer, opc command.Type, payload json.RawMessage) (err error) {
 	if st.closed.Load() {
 		return net.ErrClosed
 	}
@@ -222,7 +222,7 @@ func (st *State) Write(client io.Writer, opc command.Type, payload json.RawMessa
 	return err
 }
 
-func (st *State) Read(client io.Reader) (*Payload, int, error) {
+func (st *State_) Read(client io.Reader) (*Payload, int, error) {
 	if st.closed.Load() {
 		return nil, 0, net.ErrClosed
 	}
@@ -245,7 +245,7 @@ func (st *State) Read(client io.Reader) (*Payload, int, error) {
 	return packet, len(data), nil
 }
 
-func (st *State) Update(payload *Payload, writer io.Writer) error {
+func (st *State_) Update(payload *Payload, writer io.Writer) error {
 	if !payload.Outdated { // TODO: re-evaluate this strategy
 		st.sequenceNumber.Store(payload.Seq)
 	}
@@ -295,14 +295,14 @@ func (st *State) Update(payload *Payload, writer io.Writer) error {
 }
 
 // Heartbeat Close method may be used if Write fails
-func (st *State) Heartbeat(client io.Writer) error {
+func (st *State_) Heartbeat(client io.Writer) error {
 	seq := st.SequenceNumber()
 	seqStr := strconv.FormatInt(seq, 10)
 	return st.Write(client, command.Heartbeat, []byte(seqStr))
 }
 
 // Identify Close method may be used if Write fails
-func (st *State) Identify(client io.Writer) error {
+func (st *State_) Identify(client io.Writer) error {
 	identifyPacket := &Identify{
 		BotToken:       st.botToken,
 		Properties:     &st.connectionProperties,
@@ -327,7 +327,7 @@ func (st *State) Identify(client io.Writer) error {
 }
 
 // Resume Close method may be used if Write fails
-func (st *State) Resume(client io.Writer) error {
+func (st *State_) Resume(client io.Writer) error {
 	if !st.HaveSessionID() {
 		return errors.New("missing session id, can not resume connection")
 	}
@@ -348,19 +348,19 @@ func (st *State) Resume(client io.Writer) error {
 	return nil
 }
 
-func (st *State) SessionID() string {
+func (st *State_) SessionID() string {
 	return st.sessionID
 }
 
-func (st *State) HaveSessionID() bool {
+func (st *State_) HaveSessionID() bool {
 	return st.sessionID != ""
 }
 
-func (st *State) HaveIdentified() bool {
+func (st *State_) HaveIdentified() bool {
 	return st.sentResumeOrIdentify.Load()
 }
 
-func (st *State) InvalidateSession(closeWriter io.Writer) {
+func (st *State_) InvalidateSession(closeWriter io.Writer) {
 	if err := st.WriteClose(closeWriter, NormalCloseCode); err != nil && !errors.Is(err, net.ErrClosed) {
 		// TODO: so what?
 	}
@@ -368,7 +368,7 @@ func (st *State) InvalidateSession(closeWriter io.Writer) {
 	//gs.state = nil
 }
 
-func (st *State) FilterEvent(evt event.Type) bool {
+func (st *State_) FilterEvent(evt event.Type) bool {
 	if st.whitelist != nil {
 		return st.whitelist.Contains(evt)
 	}

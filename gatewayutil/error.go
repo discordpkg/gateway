@@ -9,7 +9,7 @@ import (
 	"github.com/discordpkg/gateway/opcode"
 )
 
-func HandleError(st *gateway.State, err error, closeWriter io.Writer) error {
+func HandleError(st *gateway.State_, err error, closeWriter io.Writer) error {
 	if errors.Is(err, gateway.ErrSequenceNumberSkipped) {
 		_ = st.WriteClose(closeWriter, gateway.RestartCloseCode)
 	}
