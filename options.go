@@ -66,9 +66,24 @@ func WithShardID(id ShardID) Option {
 	}
 }
 
-func WithShardCount(count uint) Option {
+func WithShardCount(count int) Option {
+	if count < 0 {
+		panic("shard count must be above 0")
+	}
+
 	return func(client *Client) error {
 		client.totalNumberOfShards = count
+		return nil
+	}
+}
+
+func WithSessionID(id string) Option {
+	if id == "" {
+		panic("session id is not set")
+	}
+
+	return func(client *Client) error {
+		client.ctx.SessionID = id
 		return nil
 	}
 }
@@ -94,20 +109,17 @@ func WithIdentifyRateLimiter(ratelimiter IdentifyRateLimiter) Option {
 	}
 }
 
-func WithSequenceNumber(seq int64) Option {
+// WithHeartbeatHandler allows overwriting default heartbeat behavior.
+// Basic behavior is achieved with the DefaultHeartbeatHandler:
+//
+//	 NewClient(
+//	 	WithHeartbeatHandler(&DefaultHeartbeatHandler{
+//				TextWriter:
+//			})
+//	 )
+func WithHeartbeatHandler(handler HeartbeatHandler) Option {
 	return func(client *Client) error {
-		if seq < 0 {
-			return errors.New("initial sequence number can not be a negative number")
-		}
-
-		client.ctx.sequenceNumber.Store(seq)
-		return nil
-	}
-}
-
-func WithSessionID(id string) Option {
-	return func(client *Client) error {
-		client.sessionID = id
+		client.heartbeatHandler = handler
 		return nil
 	}
 }

@@ -26,15 +26,6 @@ type HandlerStruct struct {
 	Data RawMessage
 }
 
-type Hello struct {
-	HeartbeatIntervalMilli int64 `json:"heartbeat_interval"`
-}
-
-type Ready struct {
-	SessionID        string `json:"session_id"`
-	ResumeGatewayURL string `json:"resume_gateway_url"`
-}
-
 type Resume struct {
 	BotToken       string `json:"token"`
 	SessionID      string `json:"session_id"`
@@ -52,7 +43,7 @@ type Identify struct {
 	Properties     interface{} `json:"properties"`
 	Compress       bool        `json:"compress,omitempty"`
 	LargeThreshold uint8       `json:"large_threshold,omitempty"`
-	Shard          [2]uint     `json:"shard"`
+	Shard          [2]int      `json:"shard"`
 	Presence       interface{} `json:"presence"`
 	Intents        intent.Type `json:"intents"`
 }

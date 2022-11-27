@@ -2,27 +2,22 @@ package gateway
 
 import (
 	"errors"
-	"fmt"
-	"io"
-	"runtime"
-	"time"
-
 	"github.com/discordpkg/gateway/command"
 	"github.com/discordpkg/gateway/event"
 	"github.com/discordpkg/gateway/intent"
 	"github.com/discordpkg/gateway/internal/util"
 	"github.com/discordpkg/gateway/json"
-	"github.com/discordpkg/gateway/opcode"
+	"io"
+	"runtime"
 )
 
 var ErrOutOfSync = errors.New("sequence number was out of sync")
-
-type Write func(opc command.Type, payload json.RawMessage) error
 
 func NewClient(botToken string, options ...Option) (*Client, error) {
 	client := &Client{
 		botToken: botToken,
 	}
+	client.ctx = &StateCtx{client: client}
 
 	for i := range options {
 		if err := options[i](client); err != nil {
@@ -61,6 +56,11 @@ func NewClient(botToken string, options ...Option) (*Client, error) {
 		}
 	}
 
+	// heartbeat
+	if client.heartbeatHandler == nil {
+		return nil, errors.New("missing heartbeat handler - use WithHeartbeatHandler")
+	}
+
 	// sharding
 	if client.totalNumberOfShards == 0 {
 		if client.id == 0 {
@@ -69,10 +69,22 @@ func NewClient(botToken string, options ...Option) (*Client, error) {
 			return nil, errors.New("missing shard count")
 		}
 	}
-	if uint(client.id) > client.totalNumberOfShards {
+	if int(client.id) > client.totalNumberOfShards {
 		return nil, errors.New("shard id is higher than shard count")
 	}
 
+	client.ctx.state = &HelloState{
+		StateCtx: client.ctx,
+		Identity: &Identify{ // TODO: re-use for resumes
+			BotToken:       botToken,
+			Properties:     &client.connectionProperties,
+			Compress:       false,
+			LargeThreshold: 0,
+			Shard:          [2]int{int(client.id), client.totalNumberOfShards},
+			Presence:       nil,
+			Intents:        client.intents,
+		},
+	}
 	return client, nil
 }
 
@@ -90,57 +102,37 @@ type Client struct {
 
 	intents intent.Type
 
-	ctx                 *StateCtx
-	state               State
-	commandRateLimiter  CommandRateLimiter
-	identifyRateLimiter IdentifyRateLimiter
+	ctx                  *StateCtx
+	commandRateLimiter   CommandRateLimiter
+	identifyRateLimiter  IdentifyRateLimiter
+	heartbeatHandler     HeartbeatHandler
+	connectionProperties interface{}
+	totalNumberOfShards  int
+}
+
+func (c *Client) ResumeDetails() (resumeGatewayURL string, sessionID string, err error) {
+	if st, ok := c.ctx.state.(*ResumableClosedState); ok {
+		return st.ResumeGatewayURL, st.SessionID, nil
+	}
+	return "", "", errors.New("not a resumable state")
+}
+
+func (c *Client) Close(pipe io.Writer) error {
+	return c.ctx.WriteNormalClose(pipe)
 }
 
 func (c *Client) ProcessNextPayload(payload *Payload, pipe io.Writer) (err error) {
-	if c.ctx.sequenceNumber.CAS(payload.Seq-1, payload.Seq) {
-		c.state, err = c.state.Process(payload, c.write(pipe))
-		switch c.state.(type) {
-		case *ClosedState:
-			c.ctx.closed.Store(true)
-		}
-
-		return err
+	if c.ctx.sequenceNumber.CompareAndSwap(payload.Seq-1, payload.Seq) {
+		return c.ctx.Process(payload, pipe)
 	} else if c.ctx.sequenceNumber.Load() >= payload.Seq {
 		// already handled
 		return nil
 	}
 
-	c.state = &ClosedState{}
+	c.ctx.state = &ClosedState{}
 	return ErrOutOfSync
 }
 
-func (c *Client) write(pipe io.Writer) func(opc command.Type, payload json.RawMessage) error {
-	return func(opc command.Type, payload json.RawMessage) (err error) {
-		// heartbeat should always be sent.
-		// Try reserving some calls for heartbeats when you configure your rate limiter.
-		if opc != command.Heartbeat {
-			if ok, timeout := c.commandRateLimiter.Try(); !ok {
-				<-time.After(timeout)
-			}
-		}
-		if opc == command.Identify {
-			if available, _ := c.identifyRateLimiter.Try(c.id); !available {
-				return errors.New("identify rate limiter denied shard to identify")
-			}
-		}
-
-		packet := Payload{
-			Op:   opcode.Type(opc),
-			Data: payload,
-		}
-
-		var data []byte
-		data, err = json.Marshal(&packet)
-		if err != nil {
-			return fmt.Errorf("unable to marshal packet; %w", err)
-		}
-
-		_, err = pipe.Write(data)
-		return err
-	}
+func (c *Client) Write(pipe io.Writer, opc command.Type, payload json.RawMessage) error {
+	return c.ctx.Write(pipe, opc, payload)
 }

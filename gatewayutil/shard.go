@@ -99,7 +99,7 @@ type Shard struct {
 	botToken string
 
 	Conn        net.Conn
-	State       *gateway.State_
+	Client      *gateway.Client
 	handler     gateway.Handler
 	textWriter  io.Writer
 	closeWriter io.Writer
@@ -139,16 +139,16 @@ func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn
 }
 
 func (s *Shard) Write(op command.Type, data []byte) error {
-	return s.State.Write(s.textWriter, op, data)
+	return s.Client.Write(s.textWriter, op, data)
 }
 
 // Close closes the gatewayutil connection, session can not be resumed.
 func (s *Shard) Close() error {
-	if s.State.Closed() {
+	if s.Client.Closed() {
 		return net.ErrClosed
 	}
 
-	_ = s.State.WriteClose(s.closeWriter, gateway.NormalCloseCode)
+	_ = s.Client.Close(s.closeWriter)
 	_ = s.Conn.Close()
 	return nil
 }
@@ -238,7 +238,7 @@ func (s *Shard) eventLoop(ctx context.Context) error {
 						return &WebsocketError{Err: net.ErrClosed}
 					}
 
-					return HandleError(s.State, &gateway.WebsocketClosedError{
+					return HandleError(s.Client, &gateway.WebsocketClosedError{
 						Code:   uint16(errClose.Code),
 						Reason: errClose.Reason,
 					}, s.closeWriter)
@@ -261,8 +261,8 @@ func (s *Shard) eventLoop(ctx context.Context) error {
 			return HandleError(s.State, err, s.closeWriter)
 		}
 
-		if err = s.State.Update(payload, s.textWriter); err != nil {
-			return HandleError(s.State, err, s.closeWriter)
+		if err = s.Client.ProcessNextPayload(payload, s.textWriter); err != nil {
+			return HandleError(s.Client, err, s.closeWriter)
 		}
 
 		// update our heartbeat handler & dispatch events
