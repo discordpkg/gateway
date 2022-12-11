@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/discordpkg/gateway/event/opcode"
 	"io"
 	"net"
 	"runtime"
@@ -19,7 +20,6 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/discordpkg/gateway/intent"
-	"github.com/discordpkg/gateway/opcode"
 )
 
 const (
