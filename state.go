@@ -4,9 +4,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/discordpkg/gateway/command"
+	"github.com/discordpkg/gateway/event"
+	"github.com/discordpkg/gateway/event/opcode"
 	"github.com/discordpkg/gateway/json"
-	"github.com/discordpkg/gateway/opcode"
 	"io"
 	"net"
 	"strings"
@@ -72,22 +72,26 @@ func (ctx *StateCtx) Process(payload *Payload, pipe io.Writer) error {
 	return ctx.state.Process(payload, pipe)
 }
 
-func (ctx *StateCtx) Write(pipe io.Writer, opc command.Type, payload json.RawMessage) error {
+func (ctx *StateCtx) Write(pipe io.Writer, evt event.Type, payload json.RawMessage) error {
+	opc := evt.OpCode()
+
 	// heartbeat should always be sent.
 	// Try reserving some calls for heartbeats when you configure your rate limiter.
-	if opc != command.Heartbeat {
+	switch opc {
+	case opcode.Dispatch:
+		return errors.New("can not send event type to Discord, it's receive only")
+	case opcode.Heartbeat:
 		if ok, timeout := ctx.client.commandRateLimiter.Try(); !ok {
 			<-time.After(timeout)
 		}
-	}
-	if opc == command.Identify {
+	case opcode.Identify:
 		if available, _ := ctx.client.identifyRateLimiter.Try(ctx.client.id); !available {
 			return ErrIdentifyRateLimited
 		}
 	}
 
 	packet := Payload{
-		Op:   opcode.Type(opc),
+		Op:   opc,
 		Data: payload,
 	}
 
