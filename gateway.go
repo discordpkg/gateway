@@ -1,7 +1,10 @@
 package gateway
 
 import (
+	"errors"
 	"fmt"
+	"github.com/discordpkg/gateway/closecode"
+	"github.com/discordpkg/gateway/event/opcode"
 	"time"
 
 	"github.com/discordpkg/gateway/intent"
@@ -17,6 +20,34 @@ import (
 type RawMessage = json.RawMessage
 
 type ShardID uint
+
+const (
+	NormalCloseCode  uint16 = 1000
+	RestartCloseCode uint16 = 1012
+)
+
+type Payload struct {
+	Op        opcode.Type     `json:"op"`
+	Data      json.RawMessage `json:"d"`
+	Seq       int64           `json:"s,omitempty"`
+	EventName event.Type      `json:"t,omitempty"`
+}
+
+var ErrSequenceNumberSkipped = errors.New("the sequence number increased with more than 1, events lost")
+
+type DiscordError struct {
+	CloseCode closecode.Type
+	OpCode    opcode.Type
+	Reason    string
+}
+
+func (c *DiscordError) Error() string {
+	return fmt.Sprintf("[%d | %d]: %s", c.CloseCode, c.OpCode, c.Reason)
+}
+
+func (c DiscordError) CanReconnect() bool {
+	return closecode.CanReconnectAfter(c.CloseCode) || opcode.CanReconnectAfter(c.OpCode)
+}
 
 type Handler func(ShardID, event.Type, RawMessage)
 
