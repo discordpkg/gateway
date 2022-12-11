@@ -3,9 +3,9 @@ package gateway
 import (
 	"errors"
 	"fmt"
-	"github.com/discordpkg/gateway/command"
+	"github.com/discordpkg/gateway/event"
+	"github.com/discordpkg/gateway/event/opcode"
 	"github.com/discordpkg/gateway/json"
-	"github.com/discordpkg/gateway/opcode"
 	"io"
 	"time"
 )
@@ -57,7 +57,7 @@ func (st *HelloState) Process(payload *Payload, pipe io.Writer) error {
 	handler.Configure(st.StateCtx, time.Duration(hello.HeartbeatIntervalMilli)*time.Millisecond)
 	go handler.Run()
 
-	if err = st.StateCtx.Write(pipe, command.Identify, data); err != nil {
+	if err = st.StateCtx.Write(pipe, event.Identify, data); err != nil {
 		st.StateCtx.SetState(&ClosedState{})
 		return err
 	}

@@ -1,12 +1,11 @@
 package gateway
 
 import (
+	"github.com/discordpkg/gateway/event/opcode"
 	"io"
 	"math/rand"
 	"strconv"
 	"time"
-
-	"github.com/discordpkg/gateway/command"
 )
 
 type HeartbeatHandler interface {
@@ -50,7 +49,7 @@ func (p *DefaultHeartbeatHandler) Run() {
 
 		seq := p.ctx.sequenceNumber.Load()
 		seqStr := strconv.FormatInt(seq, 10)
-		if err := p.ctx.Write(p.TextWriter, command.Heartbeat, []byte(seqStr)); err != nil {
+		if err := p.ctx.Write(p.TextWriter, opcode.Heartbeat, []byte(seqStr)); err != nil {
 			// failed to send heartbeat, shutting down
 			break
 		}

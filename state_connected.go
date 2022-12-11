@@ -2,8 +2,8 @@ package gateway
 
 import (
 	"fmt"
-	"github.com/discordpkg/gateway/command"
-	"github.com/discordpkg/gateway/opcode"
+	"github.com/discordpkg/gateway/event"
+	"github.com/discordpkg/gateway/event/opcode"
 	"io"
 	"strconv"
 )
@@ -23,7 +23,7 @@ func (st *ConnectedState) Process(payload *Payload, pipe io.Writer) error {
 	switch payload.Op {
 	case opcode.Heartbeat:
 		seqStr := strconv.FormatInt(payload.Seq, 10)
-		if err := st.StateCtx.Write(pipe, command.Heartbeat, []byte(seqStr)); err != nil {
+		if err := st.StateCtx.Write(pipe, event.Heartbeat, []byte(seqStr)); err != nil {
 			st.StateCtx.SetState(&ClosedState{})
 			return fmt.Errorf("discord requested heartbeat, but was unable to send one. %w", err)
 		}
