@@ -13,6 +13,13 @@ type Ready struct {
 	ResumeGatewayURL string `json:"resume_gateway_url"`
 }
 
+// ReadyState is responsibile for the Ready phase of the gateway connection. It's responsibilities are:
+//  1. Process incoming Ready event
+//  2. Cache relevant Discord session data
+//  4. Transition to the ConnectedState
+//
+// See the Discord documentation for more information:
+//   - https://discord.com/developers/docs/topics/gateway#ready-event
 type ReadyState struct {
 	*StateCtx
 }

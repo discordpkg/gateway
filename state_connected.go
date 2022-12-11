@@ -3,14 +3,18 @@ package gateway
 import (
 	"fmt"
 	"github.com/discordpkg/gateway/command"
-	"github.com/discordpkg/gateway/json"
 	"github.com/discordpkg/gateway/opcode"
 	"io"
 	"strconv"
 )
 
 // ConnectedState handles any discord events after a successful gateway connection. The only possible state after
-// this is the ClosedState or it's derivatives.
+// this is the ClosedState or it's derivatives such as a resumable state.
+//
+// See the Discord documentation for more information:
+//   - https://discord.com/developers/docs/topics/gateway#dispatch-events
+//   - https://discord.com/developers/docs/topics/gateway#heartbeat-interval-example-heartbeat-ack
+//   - https://discord.com/developers/docs/topics/gateway#heartbeat-requests
 type ConnectedState struct {
 	*StateCtx
 }
@@ -25,21 +29,16 @@ func (st *ConnectedState) Process(payload *Payload, pipe io.Writer) error {
 		}
 	case opcode.HeartbeatACK:
 		st.StateCtx.heartbeatACK.CompareAndSwap(false, true)
-	case opcode.InvalidSession:
-		var d bool
-		if err := json.Unmarshal(payload.Data, &d); err != nil || !d {
-			st.StateCtx.SetState(&ClosedState{})
-		} else {
-			st.StateCtx.SetState(&ResumableClosedState{st.StateCtx})
+	case opcode.Dispatch:
+		if st.StateCtx.client.eventHandler == nil {
+			return nil
 		}
-		return &DiscordError{
-			OpCode: payload.Op,
+
+		if _, ok := st.StateCtx.client.allowlist[payload.EventName]; !ok {
+			return nil
 		}
-	case opcode.Reconnect:
-		st.StateCtx.SetState(&ResumableClosedState{st.StateCtx})
-		return &DiscordError{
-			OpCode: payload.Op,
-		}
+
+		st.StateCtx.client.eventHandler(st.StateCtx.client.id, payload.EventName, payload.Data)
 	}
 
 	return nil

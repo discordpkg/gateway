@@ -20,18 +20,6 @@ type ShardID uint
 
 type Handler func(ShardID, event.Type, RawMessage)
 
-type HandlerStruct struct {
-	ShardID
-	Name event.Type
-	Data RawMessage
-}
-
-type Resume struct {
-	BotToken       string `json:"token"`
-	SessionID      string `json:"session_id"`
-	SequenceNumber int64  `json:"seq"`
-}
-
 type IdentifyConnectionProperties struct {
 	OS      string `json:"os"`
 	Browser string `json:"browser"`

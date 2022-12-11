@@ -12,20 +12,25 @@
 </p>
 
 A minimal implementation for the [Discord gateway](https://discord.com/developers/docs/topics/gateway) logic using 
-the state pattern. Websocketing is separated out to allow re-use with any websocket library in golang. 
-See [gatewayutil](./gatewayutil) for a shard implementation using [github.com/gobwas/ws](https://github.com/gobwas/ws).
+the state pattern. The goal is to provide the Discord gateway behavior as a library to quickly build correct shard 
+implementation.
 
-# Features
+See [gatewayutil sub-package](./gatewayutil) for a shard implementation using [github.com/gobwas/ws](https://github.com/gobwas/ws).
 
- - Complete control of goroutines (if desired)
- - Intents
- - GuildEvents & DirectMessageEvents as a intent alternative for future-proofing / more optimizations 
- - Receive Gateway events
- - Send Gateway commands
- - context support
- - Control over reconnect, disconnect, or behavior for handling discord errors
+# Design
+A client is holds a state that affects how the next incoming message is processed. To begin with, the client is given a
+[HelloState](./state_hello.go), which transitions into a [ReadyState](./state_ready.go), which again transitions into a [ConnectedState](./state_connected.go). Each state is named in 
+accordance with each phase of the [gateway connection setup guide](https://discord.com/developers/docs/topics/gateway#connection-lifecycle), 
+and are responsible for processing different Discord messages.
 
+![Different gateway client states](./.github/gateway-states.svg)
 
+The different client methods takes the websocket connection as parameters in accordance with the
+io package (Reader, Writer), instead of writing an abstraction compliant wrapper of whatever websocket library you
+want to use.
+
+A closed client is considered dead, and can not be used for future Discord events. A new client must be created. 
+Specify the "dead client" as a parent allows the new client to potentially resume instead of creating a fresh session.
 
 ## Identify rate limit
 When you have multiple shards, you must inject a rate limiter for identify. The CommandRateLimitChan is optional in either case.

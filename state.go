@@ -14,6 +14,9 @@ import (
 	"time"
 )
 
+var ErrRateLimited = errors.New("unable to send message to Discord due to hitting rate limited")
+var ErrIdentifyRateLimited = fmt.Errorf("can't send identify command: %w", ErrRateLimited)
+
 type State interface {
 	Process(payload *Payload, pipe io.Writer) error
 	//Close(*StateCtx) error
@@ -41,7 +44,31 @@ func (ctx *StateCtx) SetState(state State) {
 	ctx.state = state
 }
 
+func (ctx *StateCtx) SessionIssueHandler(payload *Payload) error {
+	switch payload.Op {
+	case opcode.InvalidSession:
+		var d bool
+		if err := json.Unmarshal(payload.Data, &d); err != nil || !d {
+			ctx.SetState(&ClosedState{})
+		} else {
+			ctx.SetState(&ResumableClosedState{ctx})
+		}
+	case opcode.Reconnect:
+		ctx.SetState(&ResumableClosedState{ctx})
+	default:
+		return nil
+	}
+
+	return &DiscordError{
+		OpCode: payload.Op,
+	}
+}
+
 func (ctx *StateCtx) Process(payload *Payload, pipe io.Writer) error {
+	if err := ctx.SessionIssueHandler(payload); err != nil {
+		return err
+	}
+
 	return ctx.state.Process(payload, pipe)
 }
 
@@ -55,7 +82,7 @@ func (ctx *StateCtx) Write(pipe io.Writer, opc command.Type, payload json.RawMes
 	}
 	if opc == command.Identify {
 		if available, _ := ctx.client.identifyRateLimiter.Try(ctx.client.id); !available {
-			return errors.New("identify rate limiter denied shard to identify")
+			return ErrIdentifyRateLimited
 		}
 	}
 

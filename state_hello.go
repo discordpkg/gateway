@@ -14,6 +14,18 @@ type Hello struct {
 	HeartbeatIntervalMilli int64 `json:"heartbeat_interval"`
 }
 
+// HelloState is one of several initial state for the client. It's responsibility are as follows
+//  1. Process incoming Hello event
+//  2. Initiate a heartbeat process
+//  3. Send Identify message
+//  4. Transition to the ReadyState
+//
+// This state is responsible for handling the Hello phase of the gateway connection. See the Discord documentation
+// for more information:
+//   - https://discord.com/developers/docs/topics/gateway#connecting
+//   - https://discord.com/developers/docs/topics/gateway#hello-event
+//   - https://discord.com/developers/docs/topics/gateway#sending-heartbeats
+//   - https://discord.com/developers/docs/topics/gateway#identifying
 type HelloState struct {
 	*StateCtx
 	Identity *Identify

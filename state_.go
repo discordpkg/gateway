@@ -32,7 +32,6 @@ type Payload struct {
 	Data      json.RawMessage `json:"d"`
 	Seq       int64           `json:"s,omitempty"`
 	EventName event.Type      `json:"t,omitempty"`
-	Outdated  bool            `json:"-"`
 }
 
 var ErrSequenceNumberSkipped = errors.New("the sequence number increased with more than 1, events lost")

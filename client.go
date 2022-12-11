@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"errors"
+	"fmt"
 	"github.com/discordpkg/gateway/command"
 	"github.com/discordpkg/gateway/event"
 	"github.com/discordpkg/gateway/intent"
@@ -12,10 +13,12 @@ import (
 )
 
 var ErrOutOfSync = errors.New("sequence number was out of sync")
+var ErrNotConnectedYet = errors.New("client is not in a connected state")
 
 func NewClient(botToken string, options ...Option) (*Client, error) {
 	client := &Client{
-		botToken: botToken,
+		botToken:  botToken,
+		allowlist: util.Set[event.Type]{},
 	}
 	client.ctx = &StateCtx{client: client}
 
@@ -23,20 +26,6 @@ func NewClient(botToken string, options ...Option) (*Client, error) {
 		if err := options[i](client); err != nil {
 			return nil, err
 		}
-	}
-
-	if client.intents == 0 && (len(client.guildEvents) > 0 || len(client.directMessageEvents) > 0) {
-		// derive intents
-		client.intents |= intent.GuildEventsToIntents(client.guildEvents)
-		client.intents |= intent.DMEventsToIntents(client.directMessageEvents)
-
-		// whitelisted events specified events only
-		client.whitelist = util.Set[event.Type]{}
-		client.whitelist.Add(client.guildEvents...)
-		client.whitelist.Add(client.directMessageEvents...)
-
-		// crucial for normal function
-		client.whitelist.Add(event.Ready, event.Resumed)
 	}
 
 	// rate limits
@@ -73,41 +62,42 @@ func NewClient(botToken string, options ...Option) (*Client, error) {
 		return nil, errors.New("shard id is higher than shard count")
 	}
 
-	client.ctx.state = &HelloState{
-		StateCtx: client.ctx,
-		Identity: &Identify{ // TODO: re-use for resumes
-			BotToken:       botToken,
-			Properties:     &client.connectionProperties,
-			Compress:       false,
-			LargeThreshold: 0,
-			Shard:          [2]int{int(client.id), client.totalNumberOfShards},
-			Presence:       nil,
-			Intents:        client.intents,
-		},
+	if client.ctx.state == nil {
+		client.ctx.state = &HelloState{
+			StateCtx: client.ctx,
+			Identity: &Identify{ // TODO: re-use for resumes
+				BotToken:       botToken,
+				Properties:     &client.connectionProperties,
+				Compress:       false,
+				LargeThreshold: 0,
+				Shard:          [2]int{int(client.id), client.totalNumberOfShards},
+				Presence:       nil,
+				Intents:        client.intents,
+			},
+		}
 	}
 	return client, nil
 }
 
+// Client provides a user target interface, for simplified Discord interaction.
+//
+// Note: It's not suitable for internal processes/states.
 type Client struct {
-	botToken string
-	id       ShardID
-
-	// TODO: cleanup
-
-	// events that are not found in the whitelist are viewed as redundant and are
-	// skipped / ignored
-	whitelist           util.Set[event.Type]
-	directMessageEvents []event.Type
-	guildEvents         []event.Type
-
-	intents intent.Type
-
-	ctx                  *StateCtx
-	commandRateLimiter   CommandRateLimiter
-	identifyRateLimiter  IdentifyRateLimiter
-	heartbeatHandler     HeartbeatHandler
-	connectionProperties interface{}
+	botToken             string
+	id                   ShardID
 	totalNumberOfShards  int
+	connectionProperties interface{}
+	intents              intent.Type
+
+	allowlist    util.Set[event.Type]
+	eventHandler Handler
+
+	commandRateLimiter  CommandRateLimiter
+	identifyRateLimiter IdentifyRateLimiter
+
+	heartbeatHandler HeartbeatHandler
+
+	ctx *StateCtx
 }
 
 func (c *Client) ResumeDetails() (resumeGatewayURL string, sessionID string, err error) {
@@ -121,7 +111,21 @@ func (c *Client) Close(pipe io.Writer) error {
 	return c.ctx.WriteNormalClose(pipe)
 }
 
-func (c *Client) ProcessNextPayload(payload *Payload, pipe io.Writer) (err error) {
+func (c *Client) read(client io.Reader) (*Payload, int, error) {
+	data, err := io.ReadAll(client)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to read data. %w", err)
+	}
+
+	packet := &Payload{}
+	if err = json.Unmarshal(data, packet); err != nil {
+		return nil, 0, fmt.Errorf("failed to unmarshal packet. %w", err)
+	}
+
+	return packet, len(data), nil
+}
+
+func (c *Client) process(payload *Payload, pipe io.Writer) (err error) {
 	if c.ctx.sequenceNumber.CompareAndSwap(payload.Seq-1, payload.Seq) {
 		return c.ctx.Process(payload, pipe)
 	} else if c.ctx.sequenceNumber.Load() >= payload.Seq {
@@ -133,6 +137,19 @@ func (c *Client) ProcessNextPayload(payload *Payload, pipe io.Writer) (err error
 	return ErrOutOfSync
 }
 
+func (c *Client) ProcessNext(reader io.Reader, writer io.Writer) (*Payload, error) {
+	payload, _, err := c.read(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	return payload, c.process(payload, writer)
+}
+
 func (c *Client) Write(pipe io.Writer, opc command.Type, payload json.RawMessage) error {
+	if _, ok := c.ctx.state.(*ConnectedState); !ok {
+		return ErrNotConnectedYet
+	}
+
 	return c.ctx.Write(pipe, opc, payload)
 }

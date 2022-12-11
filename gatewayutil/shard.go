@@ -256,12 +256,8 @@ func (s *Shard) eventLoop(ctx context.Context) error {
 			continue
 		}
 
-		payload, _, err := ReadPayload(&rd)
+		payload, err := s.Client.ProcessNext(&rd, s.textWriter)
 		if err != nil {
-			return HandleError(s.State, err, s.closeWriter)
-		}
-
-		if err = s.Client.ProcessNextPayload(payload, s.textWriter); err != nil {
 			return HandleError(s.Client, err, s.closeWriter)
 		}
 

@@ -21,11 +21,9 @@ func WithDirectMessageEvents(events ...event.Type) Option {
 		if len(deduplicated) != len(events) {
 			return errors.New("duplicated direct message events found")
 		}
-		if client.intents > 0 {
-			return errors.New("'DirectMessageEvents' can not be set when using 'Intents' option")
-		}
 
-		client.directMessageEvents = events
+		client.intents |= intent.DMEventsToIntents(deduplicated)
+		client.allowlist.Add(deduplicated...) // apply prune optimization
 		return nil
 	}
 }
@@ -39,51 +37,51 @@ func WithGuildEvents(events ...event.Type) Option {
 		if len(deduplicated) != len(events) {
 			return errors.New("duplicated guild events found")
 		}
-		if client.intents > 0 {
-			return errors.New("'GuildEvents' can not be set when using 'Intents' option")
-		}
 
-		client.guildEvents = events
+		client.intents |= intent.GuildEventsToIntents(deduplicated)
+		client.allowlist.Add(deduplicated...) // apply prune optimization
 		return nil
 	}
 }
 
 func WithIntents(intents intent.Type) Option {
 	return func(client *Client) error {
-		if len(client.directMessageEvents) > 0 || len(client.guildEvents) > 0 {
+		if client.allowlist != nil {
 			return errors.New("'Intents' can not be used along with 'DirectMessageEvents' and/or 'GuildEvents'")
 		}
 
 		client.intents = intents
+		client.allowlist.Add(intent.Events(intents)...)
 		return nil
 	}
 }
 
-func WithShardID(id ShardID) Option {
-	return func(client *Client) error {
-		client.id = id
-		return nil
-	}
-}
-
-func WithShardCount(count int) Option {
+func WithShardInfo(id ShardID, count int) Option {
 	if count < 0 {
 		panic("shard count must be above 0")
 	}
 
 	return func(client *Client) error {
+		client.id = id
 		client.totalNumberOfShards = count
 		return nil
 	}
 }
 
-func WithSessionID(id string) Option {
-	if id == "" {
-		panic("session id is not set")
-	}
-
+func WithExistingSession(deadClient *Client) Option {
 	return func(client *Client) error {
-		client.ctx.SessionID = id
+		st, ok := deadClient.ctx.state.(*ResumableClosedState)
+		if !ok {
+			// panic("the existing client did not have a valid session saved")
+			// TODO: is this bad form?
+			return nil
+		}
+
+		client.ctx.SessionID = st.SessionID
+		client.ctx.ResumeGatewayURL = st.ResumeGatewayURL
+		client.ctx.sequenceNumber.Store(st.sequenceNumber.Load())
+
+		client.ctx.state = &ResumeState{&ConnectedState{StateCtx: client.ctx}}
 		return nil
 	}
 }
@@ -120,6 +118,18 @@ func WithIdentifyRateLimiter(ratelimiter IdentifyRateLimiter) Option {
 func WithHeartbeatHandler(handler HeartbeatHandler) Option {
 	return func(client *Client) error {
 		client.heartbeatHandler = handler
+		return nil
+	}
+}
+
+// WithEventHandler provides a callback that is triggered on incoming events. Note that the allowlist will filter
+// out events you have not requested.
+//
+// Warning: this function call is blocking. You should not run heavy logic in the handler, preferably just forward it
+// to a processing component. An example usage would be to send it to a buffered worker channel.
+func WithEventHandler(handler Handler) Option {
+	return func(client *Client) error {
+		client.eventHandler = handler
 		return nil
 	}
 }

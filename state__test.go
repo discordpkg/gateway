@@ -664,8 +664,8 @@ func TestGatewayState_DemultiplexCloseCode(t *testing.T) {
 func TestGatewayState_Process(t *testing.T) {
 	//t.Run("should fail on sequence skipping", func(t *testing.T) {
 	//	client := NewDefaultState(WithSessionID("sgrtxfh"))
-	//	client.whitelist = util.Set[event.Type]{}
-	//	client.whitelist.Add(event.MessageCreate)
+	//	client.allowlist = util.Set[event.Type]{}
+	//	client.allowlist.Add(event.MessageCreate)
 	//
 	//	mock := &IOMock{
 	//		writeChan: make(chan []byte, 2),
@@ -704,8 +704,8 @@ func TestGatewayState_Process(t *testing.T) {
 	//t.Run("should fail on unknown error", func(t *testing.T) {
 	//	client := NewDefaultState()
 	//	client.sessionID = "sgrtxfh"
-	//	client.whitelist = util.Set[event.Type]{}
-	//	client.whitelist.Add(event.MessageCreate)
+	//	client.allowlist = util.Set[event.Type]{}
+	//	client.allowlist.Add(event.MessageCreate)
 	//
 	//	mock := &IOMock{
 	//		writeChan: make(chan []byte, 2),
@@ -727,8 +727,8 @@ func TestGatewayState_Process(t *testing.T) {
 	//t.Run("dispatch whitelisted event", func(t *testing.T) {
 	//	client := NewDefaultState()
 	//	client.sessionID = "sgrtxfh"
-	//	client.whitelist = util.Set[event.Type]{}
-	//	client.whitelist.Add(event.MessageCreate)
+	//	client.allowlist = util.Set[event.Type]{}
+	//	client.allowlist.Add(event.MessageCreate)
 	//
 	//	mock := &IOMock{
 	//		writeChan: make(chan []byte, 2),
@@ -757,7 +757,7 @@ func TestGatewayState_Process(t *testing.T) {
 	//t.Run("dispatch blacklisted event", func(t *testing.T) {
 	//	client := NewDefaultState()
 	//	client.sessionID = "sgrtxfh"
-	//	client.whitelist = util.Set[event.Type]{}
+	//	client.allowlist = util.Set[event.Type]{}
 	//	mock := &IOMock{
 	//		writeChan: make(chan []byte, 2),
 	//		readChan:  make(chan []byte, 2),
