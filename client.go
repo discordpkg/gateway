@@ -3,7 +3,6 @@ package gateway
 import (
 	"errors"
 	"fmt"
-	"github.com/discordpkg/gateway/command"
 	"github.com/discordpkg/gateway/event"
 	"github.com/discordpkg/gateway/intent"
 	"github.com/discordpkg/gateway/internal/util"
@@ -146,10 +145,10 @@ func (c *Client) ProcessNext(reader io.Reader, writer io.Writer) (*Payload, erro
 	return payload, c.process(payload, writer)
 }
 
-func (c *Client) Write(pipe io.Writer, opc command.Type, payload json.RawMessage) error {
+func (c *Client) Write(pipe io.Writer, evt event.Type, payload json.RawMessage) error {
 	if _, ok := c.ctx.state.(*ConnectedState); !ok {
 		return ErrNotConnectedYet
 	}
 
-	return c.ctx.Write(pipe, opc, payload)
+	return c.ctx.Write(pipe, evt, payload)
 }
