@@ -31,8 +31,6 @@ const (
 	AutoModerationExecution
 )
 
-const Sum = DirectMessages | DirectMessageReactions | DirectMessageTyping | Guilds | GuildBans | GuildEmojisAndStickers | GuildIntegrations | GuildInvites | GuildMembers | GuildMessages | GuildMessageReactions | GuildMessageTyping | GuildPresences | GuildScheduledEvents | GuildVoiceStates | GuildWebhooks | 0
-
 var intentsToEventsMap = map[Type][]event.Type{
 	DirectMessages: {
 		event.ChannelPinsUpdate,

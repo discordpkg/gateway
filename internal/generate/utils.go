@@ -26,6 +26,8 @@ func Generate(data any, templatePath, targetPath string) {
 		panic(fmt.Errorf("failed to generate code: %w", err))
 	}
 
+	//fmt.Println(string(b.Bytes()))
+
 	formatted, err := format.Source(b.Bytes())
 	if err != nil {
 		panic(fmt.Errorf("unable to format generated code: %w", err))
@@ -109,6 +111,17 @@ func copyLine(b []byte) []byte {
 }
 
 type TableNameFilter func(name string) bool
+
+func AnyTable(names []string) TableNameFilter {
+	return func(name string) bool {
+		for i := range names {
+			if strings.ToLower(name) == names[i] {
+				return true
+			}
+		}
+		return false
+	}
+}
 
 func ExtractMarkdownTables(markdownFilePath string, filter TableNameFilter) []*MarkdownTable {
 	tableRegexp := regexp.MustCompile(`((\|[^|\r\n]*)+\|(\r?\n|\r)?)+`)

@@ -1,46 +1,33 @@
 package log
 
-// Logger for logging different situations
-type Logger interface {
-	// Debug low level insight in system behavior to assist diagnostic.
-	Debug(args ...interface{})
+import "github.com/discordpkg/gateway"
 
-	// Info general information that might be interesting
-	Info(args ...interface{})
+var LogInstance gateway.Logger = &nop{}
 
-	// Warn creeping technical debt, such as dependency updates will cause the system to not compile/break.
-	Warn(args ...interface{})
-
-	// Error recoverable events/issues that does not cause a system shutdown, but is also crucial and needs to be
-	// dealt with quickly.
-	Error(args ...interface{})
-
-	// Fatal identifies system crashing/breaking issues that forces the application to shut down or completely stop
-	Fatal(args ...interface{})
+func Debug(format string, args ...interface{}) {
+	LogInstance.Debug(format, args...)
 }
 
-var LogInstance Logger = &nop{}
+func Info(format string, args ...interface{}) {
+	LogInstance.Info(format, args...)
+}
 
-func Debug(args ...interface{}) {
-	LogInstance.Debug(args...)
+func Warn(format string, args ...interface{}) {
+	LogInstance.Warn(format, args)
 }
-func Info(args ...interface{}) {
-	LogInstance.Info(args...)
+
+func Error(format string, args ...interface{}) {
+	LogInstance.Error(format, args...)
 }
-func Warn(args ...interface{}) {
-	LogInstance.Warn(args)
-}
-func Error(args ...interface{}) {
-	LogInstance.Error(args...)
-}
-func Fatal(args ...interface{}) {
-	LogInstance.Fatal(args...)
+
+func Panic(format string, args ...interface{}) {
+	LogInstance.Panic(format, args...)
 }
 
 type nop struct{}
 
-func (n *nop) Debug(_ ...interface{}) {}
-func (n *nop) Info(_ ...interface{})  {}
-func (n *nop) Warn(_ ...interface{})  {}
-func (n *nop) Error(_ ...interface{}) {}
-func (n *nop) Fatal(_ ...interface{}) {}
+func (n *nop) Debug(_ string, _ ...interface{}) {}
+func (n *nop) Info(_ string, _ ...interface{})  {}
+func (n *nop) Warn(_ string, _ ...interface{})  {}
+func (n *nop) Error(_ string, _ ...interface{}) {}
+func (n *nop) Panic(_ string, _ ...interface{}) {}
