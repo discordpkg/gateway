@@ -115,13 +115,13 @@ the inner object and specify the relevant operation code.
 package main
 
 import (
-	"context"
-	"fmt"
-	"github.com/discordpkg/gateway"
-	"github.com/discordpkg/gateway/intent"
-	"github.com/discordpkg/gateway/command"
-	"github.com/discordpkg/gateway/gatewayutil"
-	"os"
+   "context"
+   "fmt"
+   "github.com/discordpkg/gateway"
+   "github.com/discordpkg/gateway/intent"
+   "github.com/discordpkg/gateway/event"
+   "github.com/discordpkg/gateway/gatewayutil"
+   "os"
 )
 
 func main() {
