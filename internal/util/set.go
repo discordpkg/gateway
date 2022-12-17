@@ -1,15 +1,14 @@
 package util
 
 import (
-	"github.com/discordpkg/gateway/command"
 	"github.com/discordpkg/gateway/event"
+	"github.com/discordpkg/gateway/event/opcode"
 	"github.com/discordpkg/gateway/intent"
-	"github.com/discordpkg/gateway/opcode"
 )
 
 var emptyStruct = struct{}{}
 
-type Set[T event.Type | intent.Type | opcode.Type | command.Type] map[T]struct{}
+type Set[T event.Type | intent.Type | opcode.Type] map[T]struct{}
 
 func (s Set[T]) Add(elements ...T) {
 	for _, element := range elements {

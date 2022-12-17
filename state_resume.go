@@ -1,9 +1,10 @@
 package gateway
 
 import (
-	"github.com/discordpkg/gateway/event"
-	"github.com/discordpkg/gateway/opcode"
 	"io"
+
+	"github.com/discordpkg/gateway/event"
+	"github.com/discordpkg/gateway/event/opcode"
 )
 
 type Resume struct {
@@ -14,7 +15,7 @@ type Resume struct {
 
 // ResumeState wraps a ConnectedState until a Resumed event is received from Discord...
 type ResumeState struct {
-	*ConnectedState
+	parentState *ConnectedState
 }
 
 func (st *ResumeState) String() string {
@@ -22,13 +23,13 @@ func (st *ResumeState) String() string {
 }
 
 func (st *ResumeState) Process(payload *Payload, pipe io.Writer) error {
-	if err := st.ConnectedState.Process(payload, pipe); err != nil {
+	if err := st.parentState.Process(payload, pipe); err != nil {
 		return err
 	}
 
 	if payload.Op == opcode.Dispatch && payload.EventName == event.Resumed {
 		// simply unwrap the existing connected state
-		st.StateCtx.SetState(st.ConnectedState)
+		st.parentState.ctx.SetState(st.parentState)
 	}
 
 	return nil

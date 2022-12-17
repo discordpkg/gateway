@@ -3,11 +3,12 @@ package gateway
 import (
 	"errors"
 	"fmt"
+	"io"
+	"time"
+
 	"github.com/discordpkg/gateway/event"
 	"github.com/discordpkg/gateway/event/opcode"
 	"github.com/discordpkg/gateway/json"
-	"io"
-	"time"
 )
 
 type Hello struct {
@@ -27,7 +28,7 @@ type Hello struct {
 //   - https://discord.com/developers/docs/topics/gateway#sending-heartbeats
 //   - https://discord.com/developers/docs/topics/gateway#identifying
 type HelloState struct {
-	*StateCtx
+	ctx      *StateCtx
 	Identity *Identify
 }
 
@@ -38,7 +39,7 @@ func (st *HelloState) String() string {
 func (st *HelloState) Process(payload *Payload, pipe io.Writer) error {
 	data, err := json.Marshal(st.Identity)
 	if err != nil {
-		st.StateCtx.SetState(&ClosedState{})
+		st.ctx.SetState(&ClosedState{})
 		return fmt.Errorf("unable to marshal identify payload. %w", err)
 	}
 
@@ -48,20 +49,22 @@ func (st *HelloState) Process(payload *Payload, pipe io.Writer) error {
 
 	var hello Hello
 	if err := json.Unmarshal(payload.Data, &hello); err != nil {
-		st.StateCtx.SetState(&ClosedState{})
+		st.ctx.SetState(&ClosedState{})
 		return err
 	}
 
+	st.ctx.logger.Debug("starting heartbeat process")
 	var handler HeartbeatHandler
-	handler, st.StateCtx.client.heartbeatHandler = st.StateCtx.client.heartbeatHandler, nil
-	handler.Configure(st.StateCtx, time.Duration(hello.HeartbeatIntervalMilli)*time.Millisecond)
+	handler, st.ctx.client.heartbeatHandler = st.ctx.client.heartbeatHandler, nil
+	handler.Configure(st.ctx, time.Duration(hello.HeartbeatIntervalMilli)*time.Millisecond)
+	st.ctx.heartbeatACK.Store(true)
 	go handler.Run()
 
-	if err = st.StateCtx.Write(pipe, event.Identify, data); err != nil {
-		st.StateCtx.SetState(&ClosedState{})
+	if err = st.ctx.Write(pipe, event.Identify, data); err != nil {
+		st.ctx.SetState(&ClosedState{})
 		return err
 	}
 
-	st.StateCtx.SetState(&ReadyState{StateCtx: st.StateCtx})
+	st.ctx.SetState(&ReadyState{ctx: st.ctx})
 	return nil
 }

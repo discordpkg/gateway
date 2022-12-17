@@ -3,9 +3,10 @@ package gateway
 import (
 	"errors"
 	"fmt"
-	"github.com/discordpkg/gateway/json"
-	"github.com/discordpkg/gateway/opcode"
 	"io"
+
+	"github.com/discordpkg/gateway/event/opcode"
+	"github.com/discordpkg/gateway/json"
 )
 
 type Ready struct {
@@ -21,7 +22,11 @@ type Ready struct {
 // See the Discord documentation for more information:
 //   - https://discord.com/developers/docs/topics/gateway#ready-event
 type ReadyState struct {
-	*StateCtx
+	ctx *StateCtx
+}
+
+func (st *ReadyState) String() string {
+	return "ready"
 }
 
 func (st *ReadyState) Process(payload *Payload, _ io.Writer) error {
@@ -31,13 +36,13 @@ func (st *ReadyState) Process(payload *Payload, _ io.Writer) error {
 
 	var ready Ready
 	if err := json.Unmarshal(payload.Data, &ready); err != nil {
-		st.StateCtx.SetState(&ClosedState{})
+		st.ctx.SetState(&ClosedState{})
 		return err
 	}
 
-	st.StateCtx.SessionID = ready.SessionID
-	st.StateCtx.ResumeGatewayURL = ready.ResumeGatewayURL
+	st.ctx.SessionID = ready.SessionID
+	st.ctx.ResumeGatewayURL = ready.ResumeGatewayURL
 
-	st.StateCtx.SetState(&ConnectedState{StateCtx: st.StateCtx})
+	st.ctx.SetState(&ConnectedState{ctx: st.ctx})
 	return nil
 }

@@ -4,22 +4,30 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/discordpkg/gateway/event"
-	"github.com/discordpkg/gateway/event/opcode"
-	"github.com/discordpkg/gateway/json"
 	"io"
 	"net"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/discordpkg/gateway/closecode"
+	"github.com/discordpkg/gateway/event"
+	"github.com/discordpkg/gateway/event/opcode"
+	"github.com/discordpkg/gateway/json"
 )
 
 var ErrRateLimited = errors.New("unable to send message to Discord due to hitting rate limited")
 var ErrIdentifyRateLimited = fmt.Errorf("can't send identify command: %w", ErrRateLimited)
 
 type State interface {
+	fmt.Stringer
 	Process(payload *Payload, pipe io.Writer) error
-	//Close(*StateCtx) error
+}
+
+// StateCloser any state implementing a Close method may overwrite the default behavior of StateCtx.Close
+type StateCloser interface {
+	State
+	Close(closeWriter io.Writer) error
 }
 
 type StateCtx struct {
@@ -32,16 +40,43 @@ type StateCtx struct {
 	SessionID        string
 	ResumeGatewayURL string
 
-	state State
+	state  State
+	logger Logger
+}
+
+func (ctx *StateCtx) String() string {
+	return fmt.Sprintf("state-ctx(%s)", ctx.state.String())
 }
 
 func (ctx *StateCtx) SetState(state State) {
+	ctx.logger.Debug("state update: %s", state)
+
 	switch state.(type) {
 	case *ClosedState:
 		ctx.closed.Store(true)
+	case *StateCtx:
+		ctx.logger.Panic("StateCtx can not be an internal state")
 	}
 
 	ctx.state = state
+}
+
+func (ctx *StateCtx) CloseCodeHandler(payload *Payload) error {
+	if payload.CloseCode == 0 {
+		return nil
+	}
+
+	ctx.logger.Debug("handling close code")
+	if closecode.CanReconnectAfter(payload.CloseCode) {
+		ctx.SetState(&ResumableClosedState{ctx})
+	} else {
+		ctx.SetState(&ClosedState{})
+	}
+
+	return &DiscordError{
+		CloseCode: payload.CloseCode,
+		Reason:    string(payload.Data),
+	}
 }
 
 func (ctx *StateCtx) SessionIssueHandler(payload *Payload) error {
@@ -59,12 +94,16 @@ func (ctx *StateCtx) SessionIssueHandler(payload *Payload) error {
 		return nil
 	}
 
+	ctx.logger.Debug("found issue with session")
 	return &DiscordError{
 		OpCode: payload.Op,
 	}
 }
 
 func (ctx *StateCtx) Process(payload *Payload, pipe io.Writer) error {
+	if err := ctx.CloseCodeHandler(payload); err != nil {
+		return err
+	}
 	if err := ctx.SessionIssueHandler(payload); err != nil {
 		return err
 	}
@@ -72,13 +111,27 @@ func (ctx *StateCtx) Process(payload *Payload, pipe io.Writer) error {
 	return ctx.state.Process(payload, pipe)
 }
 
+func (ctx *StateCtx) Close(closeWriter io.Writer) error {
+	if closer, ok := ctx.state.(StateCloser); ok {
+		return closer.Close(closeWriter)
+	}
+
+	// if resume details exist we close with an intent of resuming
+	if ctx.SessionID != "" && ctx.ResumeGatewayURL != "" && ctx.sequenceNumber.Load() > 0 {
+		return ctx.WriteRestartClose(closeWriter)
+	}
+	return ctx.WriteNormalClose(closeWriter)
+}
+
 func (ctx *StateCtx) Write(pipe io.Writer, evt event.Type, payload json.RawMessage) error {
 	opc := evt.OpCode()
+
+	ctx.logger.Debug("writing '%s' payload: %s", evt, string(payload))
 
 	// heartbeat should always be sent.
 	// Try reserving some calls for heartbeats when you configure your rate limiter.
 	switch opc {
-	case opcode.Dispatch:
+	case opcode.Dispatch, opcode.Invalid:
 		return errors.New("can not send event type to Discord, it's receive only")
 	case opcode.Heartbeat:
 		if ok, timeout := ctx.client.commandRateLimiter.Try(); !ok {
@@ -105,6 +158,7 @@ func (ctx *StateCtx) Write(pipe io.Writer, evt event.Type, payload json.RawMessa
 }
 
 func (ctx *StateCtx) WriteNormalClose(pipe io.Writer) error {
+	ctx.SetState(&ClosedState{})
 	return ctx.writeClose(pipe, NormalCloseCode)
 }
 

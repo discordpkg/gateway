@@ -8,9 +8,20 @@ import (
 	"github.com/discordpkg/gateway/internal/util"
 )
 
-// Option for initializing a new gateway state. An option must be deterministic regardless
+// Option for initializing a new gateway client. An option must be deterministic regardless
 // of when or how many times it is executed.
 type Option func(client *Client) error
+
+var noopOption = func(_ *Client) error {
+	return nil
+}
+
+func WithBotToken(token string) Option {
+	return func(client *Client) error {
+		client.botToken = token
+		return nil
+	}
+}
 
 func WithDirectMessageEvents(events ...event.Type) Option {
 	set := util.Set[event.Type]{}
@@ -69,6 +80,10 @@ func WithShardInfo(id ShardID, count int) Option {
 }
 
 func WithExistingSession(deadClient *Client) Option {
+	if deadClient == nil {
+		return noopOption
+	}
+
 	return func(client *Client) error {
 		st, ok := deadClient.ctx.state.(*ResumableClosedState)
 		if !ok {
@@ -77,11 +92,11 @@ func WithExistingSession(deadClient *Client) Option {
 			return nil
 		}
 
-		client.ctx.SessionID = st.SessionID
-		client.ctx.ResumeGatewayURL = st.ResumeGatewayURL
-		client.ctx.sequenceNumber.Store(st.sequenceNumber.Load())
+		client.ctx.SessionID = st.ctx.SessionID
+		client.ctx.ResumeGatewayURL = st.ctx.ResumeGatewayURL
+		client.ctx.sequenceNumber.Store(st.ctx.sequenceNumber.Load())
 
-		client.ctx.state = &ResumeState{&ConnectedState{StateCtx: client.ctx}}
+		client.ctx.SetState(&ResumeState{&ConnectedState{ctx: client.ctx}})
 		return nil
 	}
 }
@@ -130,6 +145,13 @@ func WithHeartbeatHandler(handler HeartbeatHandler) Option {
 func WithEventHandler(handler Handler) Option {
 	return func(client *Client) error {
 		client.eventHandler = handler
+		return nil
+	}
+}
+
+func WithLogger(logger Logger) Option {
+	return func(client *Client) error {
+		client.logger = logger
 		return nil
 	}
 }

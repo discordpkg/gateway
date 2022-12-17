@@ -29,22 +29,24 @@ import (
 )
 
 func main() {
-   shard, err := gatewayutil.NewShard(0, os.Getenv("DISCORD_TOKEN"), nil,
+   shard, err := gatewayutil.NewShard(
+      // gateway.WithLogger(&printLogger{}),
+      gateway.WithBotToken(os.Getenv("DISCORD_TOKEN")),
+      // gateway.WithEventHandler(someEventHandler),
+      gateway.WithShardInfo(0, 1),
       gateway.WithGuildEvents(event.All()...),
+      gateway.WithDirectMessageEvents(event.All()...),
       gateway.WithCommandRateLimiter(gatewayutil.NewCommandRateLimiter()),
       gateway.WithIdentifyRateLimiter(gatewayutil.NewLocalIdentifyRateLimiter()),
-      gateway.WithDirectMessageEvents(intent.Events(intent.DirectMessageReactions)),
       gateway.WithIdentifyConnectionProperties(&gateway.IdentifyConnectionProperties{
-         OS:      runtime.GOOS,
+         OS:      "linux",
          Browser: "github.com/discordpkg/gateway v0",
          Device:  "tester",
       }),
    )
    if err != nil {
-      log.Fatal(err)
+      panic(err)
    }
-
-   dialUrl := "wss://gateway.discord.gg/?v=9&encoding=json"
 ```
 
 You can then open a connection to discord and start listening for events. The event loop will continue to run
@@ -53,23 +55,21 @@ until the connection is lost or a process failed (json unmarshal/marshal, websoc
 You can use the helper methods for the DiscordError to decide when to reconnect:
 ```go
 reconnectStage:
-    if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
-        log.Fatal("failed to open websocket connection. ", err)
-    }
+   var dialURL string
+   if resumeURL := shard.ResumeURL(); resumeURL != "" {
+      dialUrl = resumeURL
+   } else {
+      // Use the "Get Gateway Bot" endpoint, this is just for demonstration
+      dialUrl = "wss://gateway.discord.gg/?v=9&encoding=json"
+   }
+	
+   if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
+      log.Fatal("failed to open websocket connection. ", err)
+   }
 
    if err = shard.EventLoop(context.Background()); err != nil {
-      reconnect := true
-
       var discordErr *gateway.DiscordError
-      if errors.As(err, &discordErr) {
-         reconnect = discordErr.CanReconnect()
-      }
-
-      if reconnect {
-         logger.Infof("reconnecting: %s", discordErr.Error())
-         if err := shard.PrepareForReconnect(); err != nil {
-            logger.Fatal("failed to prepare for reconnect:", err)
-         }
+      if errors.As(err, &discordErr) && discordErr.CanReconnect() {
          goto reconnectStage
       }
    }

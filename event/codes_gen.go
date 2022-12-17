@@ -6,7 +6,7 @@ import (
 	"github.com/discordpkg/gateway/event/opcode"
 )
 
-func (t *Type) OpCode() opcode.Type {
+func (t Type) OpCode() opcode.Type {
 	switch t {
 	case Resume:
 		return opcode.Resume

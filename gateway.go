@@ -3,9 +3,10 @@ package gateway
 import (
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/discordpkg/gateway/closecode"
 	"github.com/discordpkg/gateway/event/opcode"
-	"time"
 
 	"github.com/discordpkg/gateway/intent"
 	"github.com/discordpkg/gateway/json"
@@ -14,7 +15,6 @@ import (
 )
 
 //go:generate go run internal/generate/events/main.go
-//go:generate go run internal/generate/opcode/main.go
 //go:generate go run internal/generate/closecode/main.go
 
 type RawMessage = json.RawMessage
@@ -31,6 +31,15 @@ type Payload struct {
 	Data      json.RawMessage `json:"d"`
 	Seq       int64           `json:"s,omitempty"`
 	EventName event.Type      `json:"t,omitempty"`
+
+	// CloseCode is a special case for this library.
+	// You can specify an io.Reader which produces relevant closecode data
+	// for correct handling of close frames
+	CloseCode closecode.Type `json:"closecode,omitempty"`
+}
+
+func (p Payload) String() string {
+	return fmt.Sprintf("{\n\t\"op\":%d,\n\t\"data\": %s\n\t\"seq\":%d\n}", p.Op, string(p.Data), p.Seq)
 }
 
 var ErrSequenceNumberSkipped = errors.New("the sequence number increased with more than 1, events lost")
