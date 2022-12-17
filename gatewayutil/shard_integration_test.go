@@ -68,7 +68,7 @@ func TestShard(t *testing.T) {
 
 	token := os.Getenv(envVar)
 	if token == "" {
-		t.Fatal("missing bot token")
+		t.Skip("missing bot token")
 	}
 
 	recordedEvents := make(map[event.Type]struct{})
