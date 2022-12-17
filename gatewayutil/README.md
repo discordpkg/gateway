@@ -100,9 +100,6 @@ reconnectStage:
       }
    }   
    
-   if err := shard.PrepareForReconnect(); err != nil {
-      logger.Fatal("failed to prepare for reconnect:", err)
-   }
    goto reconnectStage
 }
 ```
@@ -128,27 +125,34 @@ import (
 )
 
 func main() {
-	shard, err := gatewayutil.NewShard(0, os.Getenv("DISCORD_TOKEN"), nil,
-		gateway.WithIntents(intent.Guilds),
-        gateway.WithCommandRateLimiter(gatewayutil.NewCommandRateLimiter()),
-        gateway.WithIdentifyRateLimiter(gatewayutil.NewLocalIdentifyRateLimiter()),
-	)
-	if err != nil {
-		panic(err)
-	}
+   shard, err := gatewayutil.NewShard(
+      // gateway.WithLogger(&printLogger{}),
+      gateway.WithBotToken(os.Getenv("DISCORD_TOKEN")),
+      // gateway.WithEventHandler(someEventHandler),
+      gateway.WithShardInfo(0, 1),
+      gateway.WithGuildEvents(event.All()...),
+      gateway.WithDirectMessageEvents(event.All()...),
+      gateway.WithCommandRateLimiter(gatewayutil.NewCommandRateLimiter()),
+      gateway.WithIdentifyRateLimiter(gatewayutil.NewLocalIdentifyRateLimiter()),
+      gateway.WithIntents(intent.Guilds),
+      gateway.WithCommandRateLimiter(gatewayutil.NewCommandRateLimiter()),
+      gateway.WithIdentifyRateLimiter(gatewayutil.NewLocalIdentifyRateLimiter()),
+   )
+   if err != nil {
+      panic(err)
+   }
 
-	dialUrl := "wss://gateway.discord.gg/?v=9&encoding=json"
-	if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
-       panic(fmt.Errorf("failed to open websocket connection. ", err))
-	}
+   dialUrl := "wss://gateway.discord.gg/?v=9&encoding=json"
+   if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
+      panic(fmt.Errorf("failed to open websocket connection. ", err))
+   }
 
    // ...
-   
-	req := `{"guild_id":"23423","limit":0,"query":""}`
-	if err := shard.Write(command.RequestGuildMembers, []byte(req)); err != nil {
-       panic(fmt.Errorf("failed to request guild members", err))
-    }
-    
+
+   req := `{"guild_id":"23423","limit":0,"query":""}`
+   if err := shard.Write(command.RequestGuildMembers, []byte(req)); err != nil {
+      panic(fmt.Errorf("failed to request guild members", err))
+   }
 }
 ```
 
