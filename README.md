@@ -1,13 +1,13 @@
 # Gateway
 <p>
-  <a href="https://codecov.io/gh/andersfylling/discordgateway">
-    <img src="https://codecov.io/gh/andersfylling/discordgateway/branch/master/graph/badge.svg" />
+  <a href="https://codecov.io/gh/discordpkg/gateway">
+    <img src="https://codecov.io/gh/discordpkg/gateway/branch/main/graph/badge.svg" />
   </a>
   <a href='https://goreportcard.com/report/github.com/discordpkg/gateway'>
     <img src='https://goreportcard.com/badge/github.com/discordpkg/gateway' alt='Code coverage' />
   </a>
   <a href='https://pkg.go.dev/github.com/discordpkg/gateway'>
-    <img src="https://pkg.go.dev/badge/andersfylling/discordgateway" alt="PkgGoDev">
+    <img src="https://pkg.go.dev/badge/discordpkg/gateway" alt="PkgGoDev">
   </a>
 </p>
 
