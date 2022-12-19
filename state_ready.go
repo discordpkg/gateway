@@ -31,6 +31,7 @@ func (st *ReadyState) String() string {
 
 func (st *ReadyState) Process(payload *Payload, _ io.Writer) error {
 	if payload.Op != opcode.Dispatch {
+		st.ctx.SetState(&ClosedState{})
 		return errors.New(fmt.Sprintf("incorrect opcode: %d, wants %d", int(payload.Op), int(opcode.Dispatch)))
 	}
 
