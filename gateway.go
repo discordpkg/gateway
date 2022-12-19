@@ -71,14 +71,3 @@ type Identify struct {
 type RateLimiter interface {
 	Try(ShardID) (bool, time.Duration)
 }
-
-type WebsocketClosedError struct {
-	Code   uint16
-	Reason string
-}
-
-var _ error = &WebsocketClosedError{}
-
-func (err *WebsocketClosedError) Error() string {
-	return fmt.Sprintf("websocket closed: %d %s", int64(err.Code), err.Reason)
-}
