@@ -22,12 +22,12 @@ The idea here is that you may also switch to a different format such as [ETF](ht
 package main
 
 import (
-	"github.com/JakeMakesStuff/go-erlpack"
-	"github.com/discordpkg/gateway/encoding"
+    "github.com/JakeMakesStuff/go-erlpack"
+    "github.com/discordpkg/gateway/encoding"
 )
 
 func init() {
-	encoding.Marshal = erlpack.Pack
-	encoding.Unmarshal = erlpack.Unpack
+    encoding.Marshal = erlpack.Pack
+    encoding.Unmarshal = erlpack.Unpack
 }
 ```
