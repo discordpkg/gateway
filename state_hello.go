@@ -37,13 +37,8 @@ func (st *HelloState) String() string {
 }
 
 func (st *HelloState) Process(payload *Payload, pipe io.Writer) error {
-	data, err := encoding.Marshal(st.Identity)
-	if err != nil {
-		st.ctx.SetState(&ClosedState{})
-		return fmt.Errorf("unable to marshal identify payload. %w", err)
-	}
-
 	if payload.Op != opcode.Hello {
+		st.ctx.SetState(&ClosedState{})
 		return errors.New(fmt.Sprintf("incorrect opcode: %d", int(payload.Op)))
 	}
 
@@ -59,6 +54,12 @@ func (st *HelloState) Process(payload *Payload, pipe io.Writer) error {
 	handler.Configure(st.ctx, time.Duration(hello.HeartbeatIntervalMilli)*time.Millisecond)
 	st.ctx.heartbeatACK.Store(true)
 	go handler.Run()
+
+	data, err := encoding.Marshal(st.Identity)
+	if err != nil {
+		st.ctx.SetState(&ClosedState{})
+		return fmt.Errorf("unable to marshal identify payload. %w", err)
+	}
 
 	if err = st.ctx.Write(pipe, event.Identify, data); err != nil {
 		st.ctx.SetState(&ClosedState{})

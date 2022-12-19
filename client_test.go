@@ -30,6 +30,15 @@ var commonOptions = []Option{
 	WithHeartbeatHandler(&NopHeartbeatHandler{}),
 }
 
+func NewClientMust(t *testing.T, options ...Option) *Client {
+	client, err := NewClient(options...)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return client
+}
+
 func TestCloseFrameHandling(t *testing.T) {
 	// The client supports processing the close code found in a websocket close frame. You can do this by creating a
 	// payload json with the close code and reason specified
@@ -38,17 +47,13 @@ func TestCloseFrameHandling(t *testing.T) {
 	description := "You sent more than one identify payload. Don't do that!"
 	data := fmt.Sprintf("{\"closecode\":%d,\"d\":\"%s\"}", closecode.AlreadyAuthenticated, description)
 
-	client, err := NewClient(options...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	client := NewClientMust(t, options...)
 	client.ctx.SetState(&ConnectedState{client.ctx})
 
 	reader := strings.NewReader(data)
 	buffer := &bytes.Buffer{}
 
-	_, err = client.ProcessNext(reader, buffer)
+	_, err := client.ProcessNext(reader, buffer)
 	if err == nil {
 		t.Fatal("missing error")
 	}

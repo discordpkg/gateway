@@ -161,6 +161,7 @@ func (c *Client) process(payload *Payload, pipe io.Writer) (err error) {
 func (c *Client) ProcessNext(reader io.Reader, writer io.Writer) (*Payload, error) {
 	payload, _, err := c.read(reader)
 	if err != nil {
+		c.ctx.SetState(&ClosedState{})
 		return nil, err
 	}
 
