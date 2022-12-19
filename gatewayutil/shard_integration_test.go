@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/discordpkg/gateway/gatewayutil/log"
-
 	"github.com/discordpkg/gateway"
 
 	"github.com/discordpkg/gateway/event"
@@ -103,11 +101,7 @@ func TestShard(t *testing.T) {
 		t.Fatal("failed to dial")
 	}
 
-	err = shard.EventLoop(ctx)
-	var closeErr *gateway.DiscordError
-	if errors.As(err, &closeErr) {
-		log.Error("%s", err)
-	} else if err != nil && !(errors.Is(err, context.Canceled)) {
-		t.Errorf("expected error to be context cancellation / normal close. Got %s", err.Error())
+	if err = shard.EventLoop(ctx); err != nil && !errors.Is(err, context.Canceled) {
+		t.Error(err)
 	}
 }
