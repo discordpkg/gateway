@@ -18,11 +18,6 @@ import (
 
 type ShardID uint
 
-const (
-	NormalCloseCode  uint16 = 1000
-	RestartCloseCode uint16 = 1012
-)
-
 type Payload struct {
 	Op        opcode.Type         `json:"op"`
 	Data      encoding.RawMessage `json:"d"`

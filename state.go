@@ -159,19 +159,19 @@ func (ctx *StateCtx) Write(pipe io.Writer, evt event.Type, payload encoding.RawM
 
 func (ctx *StateCtx) WriteNormalClose(pipe io.Writer) error {
 	ctx.SetState(&ClosedState{})
-	return ctx.writeClose(pipe, NormalCloseCode)
+	return ctx.writeClose(pipe, closecode.Normal)
 }
 
 func (ctx *StateCtx) WriteRestartClose(pipe io.Writer) error {
 	ctx.SetState(&ResumableClosedState{ctx})
-	return ctx.writeClose(pipe, RestartCloseCode)
+	return ctx.writeClose(pipe, closecode.Restarting)
 }
 
-func (ctx *StateCtx) writeClose(pipe io.Writer, code uint16) error {
+func (ctx *StateCtx) writeClose(pipe io.Writer, code closecode.Type) error {
 	writeIfOpen := func() error {
 		if ctx.closed.CompareAndSwap(false, true) {
 			closeCodeBuf := make([]byte, 2)
-			binary.BigEndian.PutUint16(closeCodeBuf, code)
+			binary.BigEndian.PutUint16(closeCodeBuf, uint16(code))
 
 			_, err := pipe.Write(closeCodeBuf)
 			return err

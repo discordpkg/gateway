@@ -6,8 +6,8 @@ type Type uint32
 
 // custom codes
 const (
-	HeartbeatAckNotReceived Type = 3000
-	ClientReconnecting      Type = 1001
+	Normal     Type = 1000
+	Restarting Type = 1012
 )
 
 const (
