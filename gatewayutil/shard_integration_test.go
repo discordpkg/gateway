@@ -95,7 +95,10 @@ func TestShard(t *testing.T) {
 		t.Fatal("failed to create gatewayutil", err)
 	}
 
-	if _, err = shard.Dial(ctx, "wss://gateway.discord.gg/?v=10&encoding=json"); err != nil {
+	_, err = shard.Dial(ctx, func() (string, error) {
+		return "wss://gateway.discord.gg/?v=10&encoding=json", nil
+	})
+	if err != nil {
 		t.Fatal("failed to dial")
 	}
 
