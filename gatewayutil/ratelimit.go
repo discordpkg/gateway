@@ -7,15 +7,27 @@ import (
 	"github.com/discordpkg/gateway"
 )
 
-func NewCommandRateLimiter() gateway.CommandRateLimiter {
+func NewCommandRateLimiter() *LocalCommandRateLimiter {
 	burstSize, duration := 120, 60*time.Second
 	burstSize -= 4 // reserve 4 calls for heartbeat
 	burstSize -= 1 // reserve one call, in case discord requests a heartbeat
 
-	return rate.New(burstSize, duration)
+	return &LocalCommandRateLimiter{
+		rate.New(burstSize, duration),
+	}
 }
 
-func NewLocalIdentifyRateLimiter() gateway.IdentifyRateLimiter {
+type LocalCommandRateLimiter struct {
+	limiter *rate.RateLimiter
+}
+
+var _ gateway.RateLimiter = &LocalCommandRateLimiter{}
+
+func (rl *LocalCommandRateLimiter) Try(_ gateway.ShardID) (bool, time.Duration) {
+	return rl.limiter.Try()
+}
+
+func NewLocalIdentifyRateLimiter() *LocalIdentifyRateLimiter {
 	return &LocalIdentifyRateLimiter{
 		limiter: rate.New(1, 5*time.Second),
 	}
@@ -24,6 +36,8 @@ func NewLocalIdentifyRateLimiter() gateway.IdentifyRateLimiter {
 type LocalIdentifyRateLimiter struct {
 	limiter *rate.RateLimiter
 }
+
+var _ gateway.RateLimiter = &LocalIdentifyRateLimiter{}
 
 func (rl *LocalIdentifyRateLimiter) Try(_ gateway.ShardID) (bool, time.Duration) {
 	return rl.limiter.Try()

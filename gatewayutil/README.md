@@ -6,11 +6,9 @@ Utility package for gateway
 ## Simple shard example
 > This code uses github.com/gobwas/ws, but you are free to use other
 > websocket implementations as well. You just have to write your own Shard implementation
-> and use GatewayState. See shard/shard.go for inspiration.
+> and use gateway.Client. See gatewayutil/shard.go for inspiration.
 
-Here no handler is registered. Simply replace `nil` with a function pointer to read events (events with operation code 0).
-
-Create a shard instance using the `gatewayshard` package:
+Create a shard instance using the `gatewayutil` package:
 
 ```go
 package main
@@ -55,15 +53,11 @@ until the connection is lost or a process failed (json unmarshal/marshal, websoc
 You can use the helper methods for the DiscordError to decide when to reconnect:
 ```go
 reconnectStage:
-   var dialURL string
-   if resumeURL := shard.ResumeURL(); resumeURL != "" {
-      dialUrl = resumeURL
-   } else {
-      // Use the "Get Gateway Bot" endpoint, this is just for demonstration
-      dialUrl = "wss://gateway.discord.gg/?v=9&encoding=json"
-   }
-	
-   if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
+   _, err := shard.Dial(context.Background(), func() (string, error) {
+      // code for calling GetGatewayBot url, only called if no resume url was cached from Discord 
+	  return "wss://gateway.discord.gg/?v=10&encoding=json"
+   })
+   if err != nil {
       log.Fatal("failed to open websocket connection. ", err)
    }
 
@@ -72,18 +66,15 @@ reconnectStage:
       if errors.As(err, &discordErr) && discordErr.CanReconnect() {
          goto reconnectStage
       }
+	  
+	  return err
    }
 }
 ```
 
 Or manually check the close code, operation code, or error:
 ```go
-reconnectStage:
-   if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
-      log.Fatal("failed to open websocket connection. ", err)
-   }
-
-   op, err := shard.EventLoop(context.Background()); 
+   err := shard.EventLoop(); 
    if err != nil {
       var discordErr *gateway.DiscordError
       if errors.As(err, &discordErr) {
@@ -142,8 +133,7 @@ func main() {
       panic(err)
    }
 
-   dialUrl := "wss://gateway.discord.gg/?v=9&encoding=json"
-   if _, err := shard.Dial(context.Background(), dialUrl); err != nil {
+   if _, err := shard.Dial(context.Background(), client.GetGatewayBotURL); err != nil {
       panic(fmt.Errorf("failed to open websocket connection. ", err))
    }
 

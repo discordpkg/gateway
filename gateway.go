@@ -76,12 +76,8 @@ type Identify struct {
 	Intents        intent.Type `json:"intents"`
 }
 
-type IdentifyRateLimiter interface {
+type RateLimiter interface {
 	Try(ShardID) (bool, time.Duration)
-}
-
-type CommandRateLimiter interface {
-	Try() (bool, time.Duration)
 }
 
 type WebsocketClosedError struct {

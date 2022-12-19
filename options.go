@@ -108,14 +108,14 @@ func WithIdentifyConnectionProperties(properties *IdentifyConnectionProperties) 
 	}
 }
 
-func WithCommandRateLimiter(ratelimiter CommandRateLimiter) Option {
+func WithCommandRateLimiter(ratelimiter RateLimiter) Option {
 	return func(client *Client) error {
 		client.commandRateLimiter = ratelimiter
 		return nil
 	}
 }
 
-func WithIdentifyRateLimiter(ratelimiter IdentifyRateLimiter) Option {
+func WithIdentifyRateLimiter(ratelimiter RateLimiter) Option {
 	return func(client *Client) error {
 		client.identifyRateLimiter = ratelimiter
 		return nil

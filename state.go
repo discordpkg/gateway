@@ -75,7 +75,7 @@ func (ctx *StateCtx) CloseCodeHandler(payload *Payload) error {
 
 	return &DiscordError{
 		CloseCode: payload.CloseCode,
-		Reason:    string(payload.Data),
+		Reason:    strings.Trim(string(payload.Data), "\""),
 	}
 }
 
@@ -134,7 +134,7 @@ func (ctx *StateCtx) Write(pipe io.Writer, evt event.Type, payload json.RawMessa
 	case opcode.Dispatch, opcode.Invalid:
 		return errors.New("can not send event type to Discord, it's receive only")
 	case opcode.Heartbeat:
-		if ok, timeout := ctx.client.commandRateLimiter.Try(); !ok {
+		if ok, timeout := ctx.client.commandRateLimiter.Try(ctx.client.id); !ok {
 			<-time.After(timeout)
 		}
 	case opcode.Identify:

@@ -55,19 +55,32 @@ type Shard struct {
 	closeWriter io.Writer
 }
 
+type GetGatewayBotURL func() (string, error)
+
 // Dial sets up the websocket connection before identifying with the gateway.
 // The url must be complete and specify api version and encoding:
 //
 //	"wss://gateway.discord.gg/"                      => invalid
 //	"wss://gateway.discord.gg/?v=10"                 => invalid
 //	"wss://gateway.discord.gg/?v=10&encoding=json"   => valid
-func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn, err error) {
-	URLString, err = ValidateDialURL(URLString)
+func (s *Shard) Dial(ctx context.Context, getURL GetGatewayBotURL) (connection net.Conn, err error) {
+	dialURL := s.client.ResumeURL()
+	if dialURL == "" {
+		dialURL, err = getURL()
+		if err != nil {
+			return nil, err
+		}
+		if dialURL == "" {
+			return nil, errors.New("unable to get a URL for websocket dial")
+		}
+	}
+
+	dialURL, err = ValidateDialURL(dialURL)
 	if err != nil {
 		return nil, err
 	}
 
-	conn, reader, _, err := ws.Dial(ctx, URLString)
+	conn, reader, _, err := ws.Dial(ctx, dialURL)
 	if err != nil {
 		return nil, err
 	}
@@ -84,6 +97,17 @@ func (s *Shard) Dial(ctx context.Context, URLString string) (connection net.Conn
 	s.Conn = conn
 	s.textWriter = s.writer(ws.OpText)
 	s.closeWriter = s.writer(ws.OpClose)
+
+	options := append(s.options, gateway.WithExistingSession(s.client))
+	options = append(options, gateway.WithHeartbeatHandler(&gateway.DefaultHeartbeatHandler{
+		TextWriter:       s.textWriter,
+		ConnectionCloser: s.Conn,
+	}))
+
+	if s.client, err = gateway.NewClient(options...); err != nil {
+		return nil, err
+	}
+
 	return conn, nil
 }
 
@@ -93,25 +117,6 @@ func (s *Shard) Write(op event.Type, data []byte) error {
 
 func (s *Shard) writer(op ws.OpCode) io.Writer {
 	return &ioWriteFlusher{wsutil.NewWriter(s.Conn, ws.StateClientSide, op)}
-}
-
-func (s *Shard) ResumeURL() string {
-	return s.client.ResumeURL()
-}
-
-func (s *Shard) EventLoop() error {
-	options := append(s.options, gateway.WithExistingSession(s.client))
-	options = append(options, gateway.WithHeartbeatHandler(&gateway.DefaultHeartbeatHandler{
-		TextWriter:       s.textWriter,
-		ConnectionCloser: s.Conn,
-	}))
-
-	var err error
-	if s.client, err = gateway.NewClient(options...); err != nil {
-		return err
-	}
-
-	return s.eventLoop()
 }
 
 func (s *Shard) nextFrame(rd *wsutil.Reader, ctrlFrameHandler wsutil.FrameHandlerFunc) (io.Reader, error) {
@@ -135,7 +140,7 @@ func (s *Shard) nextFrame(rd *wsutil.Reader, ctrlFrameHandler wsutil.FrameHandle
 		if err := ctrlFrameHandler(hdr, rd); err != nil {
 			var errClose wsutil.ClosedError
 			if errors.As(err, &errClose) {
-				mockedMessage := fmt.Sprintf("{\"closecode\":%d,\"data\":\"%s\"}", errClose.Code, errClose.Reason)
+				mockedMessage := fmt.Sprintf("{\"closecode\":%d,\"d\":\"%s\"}", errClose.Code, errClose.Reason)
 				return strings.NewReader(mockedMessage), nil
 			} else {
 				return nil, &WebsocketError{Err: err}
@@ -154,7 +159,7 @@ func (s *Shard) nextFrame(rd *wsutil.Reader, ctrlFrameHandler wsutil.FrameHandle
 	return rd, nil
 }
 
-func (s *Shard) eventLoop() error {
+func (s *Shard) EventLoop() error {
 	defer s.client.Close(s.closeWriter)
 
 	controlHandler := wsutil.ControlFrameHandler(s.Conn, ws.StateClientSide)

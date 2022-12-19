@@ -97,8 +97,8 @@ type Client struct {
 	allowlist    util.Set[event.Type]
 	eventHandler Handler
 
-	commandRateLimiter  CommandRateLimiter
-	identifyRateLimiter IdentifyRateLimiter
+	commandRateLimiter  RateLimiter
+	identifyRateLimiter RateLimiter
 
 	heartbeatHandler HeartbeatHandler
 
