@@ -70,7 +70,7 @@ func NewClient(options ...Option) (*Client, error) {
 	if client.ctx.state == nil {
 		client.ctx.SetState(&HelloState{
 			ctx: client.ctx,
-			Identity: &Identify{ // TODO: re-use for resumes
+			Identity: &Identify{
 				BotToken:       client.botToken,
 				Properties:     &client.connectionProperties,
 				Compress:       false,
