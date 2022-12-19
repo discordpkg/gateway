@@ -64,7 +64,10 @@ type GetGatewayBotURL func() (string, error)
 //	"wss://gateway.discord.gg/?v=10"                 => invalid
 //	"wss://gateway.discord.gg/?v=10&encoding=json"   => valid
 func (s *Shard) Dial(ctx context.Context, getURL GetGatewayBotURL) (connection net.Conn, err error) {
-	dialURL := s.client.ResumeURL()
+	dialURL := ""
+	if s.client != nil {
+		dialURL = s.client.ResumeURL()
+	}
 	if dialURL == "" {
 		dialURL, err = getURL()
 		if err != nil {
@@ -159,7 +162,7 @@ func (s *Shard) nextFrame(rd *wsutil.Reader, ctrlFrameHandler wsutil.FrameHandle
 	return rd, nil
 }
 
-func (s *Shard) EventLoop() error {
+func (s *Shard) EventLoop(ctx context.Context) error {
 	defer s.client.Close(s.closeWriter)
 
 	controlHandler := wsutil.ControlFrameHandler(s.Conn, ws.StateClientSide)
@@ -184,6 +187,8 @@ func (s *Shard) EventLoop() error {
 			return err
 		}
 
-		return nil
+		if err = ctx.Err(); err != nil {
+			return err
+		}
 	}
 }

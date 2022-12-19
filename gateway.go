@@ -50,7 +50,7 @@ func (c DiscordError) CanReconnect() bool {
 	return closecode.CanReconnectAfter(c.CloseCode) || opcode.CanReconnectAfter(c.OpCode)
 }
 
-type Handler func(ShardID, event.Type, encoding.RawMessage)
+type Handler func(shardID ShardID, evt event.Type, data encoding.RawMessage)
 
 type IdentifyConnectionProperties struct {
 	OS      string `json:"os"`

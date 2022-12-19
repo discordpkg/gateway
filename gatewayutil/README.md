@@ -74,7 +74,7 @@ reconnectStage:
 
 Or manually check the close code, operation code, or error:
 ```go
-   err := shard.EventLoop(); 
+   err := shard.EventLoop(context.Background()); 
    if err != nil {
       var discordErr *gateway.DiscordError
       if errors.As(err, &discordErr) {

@@ -103,7 +103,7 @@ func TestShard(t *testing.T) {
 		t.Fatal("failed to dial")
 	}
 
-	err = shard.EventLoop()
+	err = shard.EventLoop(ctx)
 	var closeErr *gateway.DiscordError
 	if errors.As(err, &closeErr) {
 		log.Error("%s", err)
