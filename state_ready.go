@@ -3,10 +3,10 @@ package gateway
 import (
 	"errors"
 	"fmt"
+	"github.com/discordpkg/gateway/encoding"
 	"io"
 
 	"github.com/discordpkg/gateway/event/opcode"
-	"github.com/discordpkg/gateway/json"
 )
 
 type Ready struct {
@@ -35,7 +35,7 @@ func (st *ReadyState) Process(payload *Payload, _ io.Writer) error {
 	}
 
 	var ready Ready
-	if err := json.Unmarshal(payload.Data, &ready); err != nil {
+	if err := encoding.Unmarshal(payload.Data, &ready); err != nil {
 		st.ctx.SetState(&ClosedState{})
 		return err
 	}

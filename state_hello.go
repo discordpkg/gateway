@@ -3,12 +3,12 @@ package gateway
 import (
 	"errors"
 	"fmt"
+	"github.com/discordpkg/gateway/encoding"
 	"io"
 	"time"
 
 	"github.com/discordpkg/gateway/event"
 	"github.com/discordpkg/gateway/event/opcode"
-	"github.com/discordpkg/gateway/json"
 )
 
 type Hello struct {
@@ -37,7 +37,7 @@ func (st *HelloState) String() string {
 }
 
 func (st *HelloState) Process(payload *Payload, pipe io.Writer) error {
-	data, err := json.Marshal(st.Identity)
+	data, err := encoding.Marshal(st.Identity)
 	if err != nil {
 		st.ctx.SetState(&ClosedState{})
 		return fmt.Errorf("unable to marshal identify payload. %w", err)
@@ -48,7 +48,7 @@ func (st *HelloState) Process(payload *Payload, pipe io.Writer) error {
 	}
 
 	var hello Hello
-	if err := json.Unmarshal(payload.Data, &hello); err != nil {
+	if err := encoding.Unmarshal(payload.Data, &hello); err != nil {
 		st.ctx.SetState(&ClosedState{})
 		return err
 	}

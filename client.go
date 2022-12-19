@@ -3,13 +3,13 @@ package gateway
 import (
 	"errors"
 	"fmt"
+	"github.com/discordpkg/gateway/encoding"
 	"io"
 	"runtime"
 
 	"github.com/discordpkg/gateway/event"
 	"github.com/discordpkg/gateway/intent"
 	"github.com/discordpkg/gateway/internal/util"
-	"github.com/discordpkg/gateway/json"
 )
 
 var ErrOutOfSync = errors.New("sequence number was out of sync")
@@ -138,7 +138,7 @@ func (c *Client) read(client io.Reader) (*Payload, int, error) {
 	}
 
 	packet := &Payload{}
-	if err = json.Unmarshal(data, packet); err != nil {
+	if err = encoding.Unmarshal(data, packet); err != nil {
 		return nil, 0, fmt.Errorf("failed to unmarshal packet. %w", err)
 	}
 
@@ -168,7 +168,7 @@ func (c *Client) ProcessNext(reader io.Reader, writer io.Writer) (*Payload, erro
 	return payload, c.process(payload, writer)
 }
 
-func (c *Client) Write(pipe io.Writer, evt event.Type, payload json.RawMessage) error {
+func (c *Client) Write(pipe io.Writer, evt event.Type, payload encoding.RawMessage) error {
 	if _, ok := c.ctx.state.(*ConnectedState); !ok {
 		return ErrNotConnectedYet
 	}

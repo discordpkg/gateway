@@ -3,21 +3,18 @@ package gateway
 import (
 	"errors"
 	"fmt"
+	"github.com/discordpkg/gateway/encoding"
 	"time"
 
 	"github.com/discordpkg/gateway/closecode"
 	"github.com/discordpkg/gateway/event/opcode"
 
-	"github.com/discordpkg/gateway/intent"
-	"github.com/discordpkg/gateway/json"
-
 	"github.com/discordpkg/gateway/event"
+	"github.com/discordpkg/gateway/intent"
 )
 
 //go:generate go run internal/generate/events/main.go
 //go:generate go run internal/generate/closecode/main.go
-
-type RawMessage = json.RawMessage
 
 type ShardID uint
 
@@ -27,10 +24,10 @@ const (
 )
 
 type Payload struct {
-	Op        opcode.Type     `json:"op"`
-	Data      json.RawMessage `json:"d"`
-	Seq       int64           `json:"s,omitempty"`
-	EventName event.Type      `json:"t,omitempty"`
+	Op        opcode.Type         `json:"op"`
+	Data      encoding.RawMessage `json:"d"`
+	Seq       int64               `json:"s,omitempty"`
+	EventName event.Type          `json:"t,omitempty"`
 
 	// CloseCode is a special case for this library.
 	// You can specify an io.Reader which produces relevant closecode data
@@ -58,7 +55,7 @@ func (c DiscordError) CanReconnect() bool {
 	return closecode.CanReconnectAfter(c.CloseCode) || opcode.CanReconnectAfter(c.OpCode)
 }
 
-type Handler func(ShardID, event.Type, RawMessage)
+type Handler func(ShardID, event.Type, encoding.RawMessage)
 
 type IdentifyConnectionProperties struct {
 	OS      string `json:"os"`

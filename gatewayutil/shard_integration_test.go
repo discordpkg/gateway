@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/discordpkg/gateway/encoding"
 	"os"
 	"testing"
 	"time"
@@ -72,7 +73,7 @@ func TestShard(t *testing.T) {
 	}
 
 	recordedEvents := make(map[event.Type]struct{})
-	var recordEvent gateway.Handler = func(id gateway.ShardID, e event.Type, message gateway.RawMessage) {
+	var recordEvent gateway.Handler = func(id gateway.ShardID, e event.Type, message encoding.RawMessage) {
 		recordedEvents[e] = struct{}{}
 	}
 

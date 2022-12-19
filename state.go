@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/discordpkg/gateway/encoding"
 	"io"
 	"net"
 	"strings"
@@ -13,7 +14,6 @@ import (
 	"github.com/discordpkg/gateway/closecode"
 	"github.com/discordpkg/gateway/event"
 	"github.com/discordpkg/gateway/event/opcode"
-	"github.com/discordpkg/gateway/json"
 )
 
 var ErrRateLimited = errors.New("unable to send message to Discord due to hitting rate limited")
@@ -83,7 +83,7 @@ func (ctx *StateCtx) SessionIssueHandler(payload *Payload) error {
 	switch payload.Op {
 	case opcode.InvalidSession:
 		var d bool
-		if err := json.Unmarshal(payload.Data, &d); err != nil || !d {
+		if err := encoding.Unmarshal(payload.Data, &d); err != nil || !d {
 			ctx.SetState(&ClosedState{})
 		} else {
 			ctx.SetState(&ResumableClosedState{ctx})
@@ -123,7 +123,7 @@ func (ctx *StateCtx) Close(closeWriter io.Writer) error {
 	return ctx.WriteNormalClose(closeWriter)
 }
 
-func (ctx *StateCtx) Write(pipe io.Writer, evt event.Type, payload json.RawMessage) error {
+func (ctx *StateCtx) Write(pipe io.Writer, evt event.Type, payload encoding.RawMessage) error {
 	opc := evt.OpCode()
 
 	ctx.logger.Debug("writing '%s' payload: %s", evt, string(payload))
@@ -148,7 +148,7 @@ func (ctx *StateCtx) Write(pipe io.Writer, evt event.Type, payload json.RawMessa
 		Data: payload,
 	}
 
-	data, err := json.Marshal(&packet)
+	data, err := encoding.Marshal(&packet)
 	if err != nil {
 		return fmt.Errorf("unable to marshal packet; %w", err)
 	}
