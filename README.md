@@ -13,9 +13,7 @@
 
 A minimal implementation for the [Discord gateway](https://discord.com/developers/docs/topics/gateway) logic using 
 the state pattern. The goal is to provide the Discord gateway behavior as a library to quickly build correct shard 
-implementation.
-
-See [gatewayutil sub-package](./gatewayutil) for a shard implementation using [github.com/gobwas/ws](https://github.com/gobwas/ws).
+implementation. A functional shard implementation using [github.com/gobwas/ws](https://github.com/gobwas/ws) can be found at [gatewayutil sub-package](./gatewayutil).
 
 # Design
 A client is holds a state that affects how the next incoming message is processed. To begin with, the client is given a
@@ -32,12 +30,6 @@ want to use.
 A closed client is considered dead, and can not be used for future Discord events. A new client must be created. 
 Specify the "dead client" as a parent allows the new client to potentially resume instead of creating a fresh session.
 
-## Identify rate limit
-When you have multiple shards, you must inject a rate limiter for identify. The CommandRateLimitChan is optional in either case.
-When no rate limiter for identifies are injected, one is created with the standard 1 identify per 5 second.
-
-See the IdentifyRateLimiter interface for minimum implementation.
-
 ## Live bot for testing
 There is a bot running the gobwas code. Found in the cmd subdir. If you want to help out the "stress testing", you can add the bot here: https://discord.com/oauth2/authorize?scope=bot&client_id=792491747711123486&permissions=0
 
@@ -46,17 +38,15 @@ It only reads incoming events and waits to crash. Once any alerts such as warnin
 
 ## Support
 
- - [x] Gateway
-   - [X] operation codes
-   - [X] close codes
-   - [X] Intents
-   - [x] Events
-   - [x] Commands
-   - [x] JSON
-   - [ ] ETF
-   - [x] Rate limit
-     - [x] Identify
-     - [x] Commands
+ - [X] operation codes
+ - [X] close codes
+ - [X] Intents
+ - [x] Events
+ - [x] JSON
+ - [x] ETF (see the [encoding package](./encoding))
+ - [x] Rate limit
+   - [x] Identify (local implementation)
+   - [x] Commands (local implementation)
  - [ ] Shard(s) manager
  - [ ] Buffer pool
 
