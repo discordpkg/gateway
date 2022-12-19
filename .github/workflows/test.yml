@@ -32,5 +32,5 @@ jobs:
       - name: unit tests
         run: go test -short -v -race -shuffle=on -coverprofile=coverage.txt -covermode=atomic ./...
       - name: Codecov
-        run: bash <(curl -s https://codecov.io/bash) -t ${{secrets.CODECOV_TOKEN}} -B master -c -F unit -f "./coverage.txt" -Z
+        run: bash <(curl -s https://codecov.io/bash) -t ${{secrets.CODECOV_TOKEN}} -c -F unit -f "./coverage.txt" -Z
 
