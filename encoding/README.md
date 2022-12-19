@@ -9,9 +9,9 @@ import (
     jsoniter "github.com/json-iterator/go"
 )
 
+var j = jsoniter.ConfigCompatibleWithStandardLibrary
+
 func init() {
-    var j = jsoniter.ConfigCompatibleWithStandardLibrary
-    
     encoding.Marshal = j.Marshal
     encoding.Unmarshal = j.Unmarshal
 }
