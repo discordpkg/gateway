@@ -13,10 +13,6 @@ func (st *ClosedState) Process(payload *Payload, _ io.Writer) error {
 	panic("closed")
 }
 
-func (st *ClosedState) Close(closeWriter io.Writer) error {
-	panic("ClosedState")
-}
-
 type ResumableClosedState struct {
 	ctx *StateCtx
 }
@@ -27,8 +23,4 @@ func (st *ResumableClosedState) String() string {
 
 func (st *ResumableClosedState) Process(payload *Payload, _ io.Writer) error {
 	panic("closed")
-}
-
-func (st *ResumableClosedState) Close(closeWriter io.Writer) error {
-	panic("ResumableClosedState")
 }

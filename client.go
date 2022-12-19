@@ -158,6 +158,8 @@ func (c *Client) process(payload *Payload, pipe io.Writer) (err error) {
 	return ErrOutOfSync
 }
 
+// ProcessNext processes the next Discord message and update state accordingly. On error, you are expected to call
+// Client.Close to notify Discord about any issues accumulated in the Client.
 func (c *Client) ProcessNext(reader io.Reader, writer io.Writer) (*Payload, error) {
 	payload, _, err := c.read(reader)
 	if err != nil {

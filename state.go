@@ -112,6 +112,10 @@ func (ctx *StateCtx) Process(payload *Payload, pipe io.Writer) error {
 }
 
 func (ctx *StateCtx) Close(closeWriter io.Writer) error {
+	if ctx.closed.Load() {
+		return net.ErrClosed
+	}
+
 	if closer, ok := ctx.state.(StateCloser); ok {
 		return closer.Close(closeWriter)
 	}
