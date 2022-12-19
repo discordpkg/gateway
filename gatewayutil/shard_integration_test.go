@@ -91,7 +91,7 @@ func TestShard(t *testing.T) {
 		}),
 	)
 	if err != nil {
-		t.Fatal("failed to create gatewayutil", err)
+		t.Fatal("failed to create shard", err)
 	}
 
 	_, err = shard.Dial(ctx, func() (string, error) {
