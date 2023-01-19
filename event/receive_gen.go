@@ -12,6 +12,7 @@ const (
 	ChannelDelete                       Type = "CHANNEL_DELETE"
 	ChannelPinsUpdate                   Type = "CHANNEL_PINS_UPDATE"
 	ChannelUpdate                       Type = "CHANNEL_UPDATE"
+	GuildAuditLogEntryCreate            Type = "GUILD_AUDIT_LOG_ENTRY_CREATE"
 	GuildBanAdd                         Type = "GUILD_BAN_ADD"
 	GuildBanRemove                      Type = "GUILD_BAN_REMOVE"
 	GuildCreate                         Type = "GUILD_CREATE"
