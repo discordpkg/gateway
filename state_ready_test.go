@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"bytes"
+	"github.com/discordpkg/gateway/event/opcode"
 	"testing"
 )
 
@@ -43,7 +44,7 @@ func TestReadyState_Process(t *testing.T) {
 	t.Run("invalid json payload", func(t *testing.T) {
 		state := NewReadyState(t, options...)
 
-		payload := &Payload{Op: 10, Data: []byte(`{||||||}`)}
+		payload := &Payload{Op: opcode.Dispatch, Data: []byte(`{||||||}`)}
 		buffer := &bytes.Buffer{}
 
 		if err := state.Process(payload, buffer); err == nil {
@@ -54,7 +55,6 @@ func TestReadyState_Process(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
 		state := NewReadyState(t, options...)
 
-		// try using a hello payload
 		payload := &Payload{Op: 0, Data: []byte(`{"v":10, "session_id": "test", "resume_gateway_url": "test.com"}`)}
 		buffer := &bytes.Buffer{}
 
