@@ -31,6 +31,6 @@ jobs:
         run: diff <(gofmt -d ./...) <(echo -n)
       - name: unit tests
         run: go test -short -v -race -shuffle=on -coverprofile=coverage.txt -covermode=atomic ./...
-      - name: Codecov
-        run: bash <(curl -s https://codecov.io/bash) -t ${{secrets.CODECOV_TOKEN}} -c -F unit -f "./coverage.txt" -Z
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
 
