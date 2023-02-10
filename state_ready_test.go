@@ -50,6 +50,10 @@ func TestReadyState_Process(t *testing.T) {
 		if err := state.Process(payload, buffer); err == nil {
 			t.Fatal("should have failed due to invalid json syntax")
 		}
+
+		if _, ok := state.ctx.state.(*ClosedState); !ok {
+			t.Fatal("state was not set to closed")
+		}
 	})
 
 	t.Run("ok", func(t *testing.T) {
