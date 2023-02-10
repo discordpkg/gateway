@@ -27,6 +27,7 @@ type Payload struct {
 	// CloseCode is a special case for this library.
 	// You can specify an io.Reader which produces relevant closecode data
 	// for correct handling of close frames
+	// TODO: improve documentation
 	CloseCode closecode.Type `json:"closecode,omitempty"`
 }
 
