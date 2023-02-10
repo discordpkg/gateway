@@ -40,6 +40,17 @@ func TestReadyState_Process(t *testing.T) {
 		}
 	})
 
+	t.Run("invalid json payload", func(t *testing.T) {
+		state := NewReadyState(t, options...)
+
+		payload := &Payload{Op: 10, Data: []byte(`{||||||}`)}
+		buffer := &bytes.Buffer{}
+
+		if err := state.Process(payload, buffer); err == nil {
+			t.Fatal("should have failed due to invalid json syntax")
+		}
+	})
+
 	t.Run("ok", func(t *testing.T) {
 		state := NewReadyState(t, options...)
 
