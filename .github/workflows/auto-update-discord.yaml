@@ -1,4 +1,4 @@
-name: Update Discord values
+name: Update Discord data
 on:
   schedule:
     - cron:  '9 6 * * *'
